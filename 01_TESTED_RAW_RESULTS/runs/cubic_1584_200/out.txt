@@ -1,0 +1,180 @@
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+BASIC SIMULATION START
+  > Date... Thursday October  8, 2026
+  > Time... 15:33:16
+
+CONFIGURE RUN DIRECTORY
+  > Run directory: /work/runs/cubic_1584_200
+  > Logs directory: /work/runs/cubic_1584_200/logs_ns3
+
+CONFIGURATION
+-----
+KEY                                       VALUE
+dynamic_state_update_interval_ns          100000000
+enable_isl_utilization_tracking           false
+enable_tcp_flow_scheduler                 true
+gsl_data_rate_megabit_per_s               100
+gsl_max_queue_size_pkts                   1000
+isl_data_rate_megabit_per_s               100
+isl_max_queue_size_pkts                   1000
+satellite_network_dir                     ../../../home/ubuntu/lab/data/seoul_london/state
+satellite_network_routes_dir              ../../../home/ubuntu/lab/data/seoul_london/state/dynamic_state_100ms_for_200s
+simulation_end_time_ns                    200000000000
+simulation_seed                           123456789
+tcp_enable_pacing                         false
+tcp_flow_enable_logging_for_tcp_flow_ids  set(0)
+tcp_flow_schedule_filename                schedule.csv
+tcp_socket_type                           TcpCubic
+
+CONFIGURE SIMULATION
+  > Distributed is not enabled
+  > System id........ 0
+  > No. of systems... 1
+  > Seed............. 123456789
+  > Duration......... 200.00 s (200000000000 ns)
+
+TCP OPTIMIZATION BASIC
+  > Clock granularity.......... 1 ns
+  > Initial CWND............... 10 packets
+  > Send buffer size........... 33.554 MB
+  > Receive buffer size........ 33.554 MB
+  > Segment size............... 1380 byte
+  > Timestamp option........... enabled
+  > SACK option................ enabled
+  > Window scaling option...... enabled
+  > Pacing..................... disabled
+
+SATELLITE NETWORK
+  > Number of satellites........ 1584
+  > Number of ground stations... 2
+  > Number of nodes............. 1586
+  > Installed Internet stacks
+  > Reading and creating ISLs
+    >> ISL data rate........ 100 Mbit/s
+    >> ISL max queue size... 1000 packets
+    >> Created 3168 ISL(s)
+  > Creating GSLs
+    >> GSL data rate........ 100 Mbit/s
+    >> GSL max queue size... 1000 packets
+    >> Read all GSL interfaces information for the 1586 nodes
+    >> Number of GSL interfaces to create... 1586
+    >> Finished install GSL interfaces (interfaces, network devices, one shared channel)
+    >> Finished installing traffic control layer qdisc which will be removed later
+    >> Assigning IP addresses...
+       (with many interfaces, this can take long due to an inefficient IP assignment conflict checker)
+       Progress (as there are more entries, it becomes slower):
+       - 10.03% (t = 0.02 s, update took 0.02 s)
+       - 20.05% (t = 0.05 s, update took 0.02 s)
+       - 30.08% (t = 0.07 s, update took 0.02 s)
+       - 40.10% (t = 0.10 s, update took 0.03 s)
+       - 50.13% (t = 0.12 s, update took 0.02 s)
+       - 60.15% (t = 0.15 s, update took 0.02 s)
+       - 70.18% (t = 0.17 s, update took 0.02 s)
+       - 80.20% (t = 0.20 s, update took 0.03 s)
+       - 90.23% (t = 0.22 s, update took 0.03 s)
+       - 100.00% (t = 0.25 s, update took 0.03 s)
+    >> Finished assigning IPs
+    >> Removing traffic control layers (qdiscs)...
+    >> Finished removing GSL queueing disciplines
+    >> GSL interfaces are setup
+  > Populating ARP caches
+
+SETUP SINGLE FORWARDING ROUTING
+  > Create initial single forwarding state
+  > Setting the routing arbiter on each node
+  > Forward state update interval: 100000000ns
+  > Perform first forwarding state load for t=0
+
+SETUP GSL IF BANDWIDTH HELPER
+  > GSL interface bandwidth update interval: 100000000ns
+  > Perform first GSL interface bandwidth setting for t=0
+
+TCP FLOW SCHEDULER
+  > TCP flow scheduler is enabled
+  > Read schedule (total flow start events: 1)
+  > Removed previous flow log files if present
+  > Setting up TCP flow sinks
+  > Setting up traffic TCP flow starter
+
+UDP BURST SCHEDULER
+  > Not enabled explicitly, so disabled
+
+PINGMESH SCHEDULER
+  > Not enabled explicitly, so disabled
+
+SIMULATION
+Running the simulation for 200.00 simulation seconds...
+ 2.83% - Simulation Time = 5.66 s ::: Wallclock Time = 12.39 s
+Estimated wallclock time remaining: 7 minutes 5 seconds
+ 5.68% - Simulation Time = 11.35 s ::: Wallclock Time = 23.02 s
+Estimated wallclock time remaining: 6 minutes 22 seconds
+ 8.67% - Simulation Time = 17.35 s ::: Wallclock Time = 34.21 s
+Estimated wallclock time remaining: 6 minutes 0 seconds
+11.72% - Simulation Time = 23.45 s ::: Wallclock Time = 46.09 s
+Estimated wallclock time remaining: 5 minutes 47 seconds
+14.76% - Simulation Time = 29.51 s ::: Wallclock Time = 57.37 s
+Estimated wallclock time remaining: 5 minutes 31 seconds
+21.07% - Simulation Time = 42.15 s ::: Wallclock Time = 78.20 s
+Estimated wallclock time remaining: 4 minutes 52 seconds
+27.54% - Simulation Time = 55.07 s ::: Wallclock Time = 102.63 s
+Estimated wallclock time remaining: 4 minutes 30 seconds
+34.02% - Simulation Time = 68.05 s ::: Wallclock Time = 124.97 s
+Estimated wallclock time remaining: 4 minutes 2 seconds
+40.55% - Simulation Time = 81.10 s ::: Wallclock Time = 147.98 s
+47.18% - Simulation Time = 94.36 s ::: Wallclock Time = 169.07 s
+53.93% - Simulation Time = 107.85 s ::: Wallclock Time = 189.30 s
+Estimated wallclock time remaining: 2 minutes 41 seconds
+61.99% - Simulation Time = 123.99 s ::: Wallclock Time = 212.30 s
+70.27% - Simulation Time = 140.54 s ::: Wallclock Time = 234.34 s
+77.50% - Simulation Time = 154.99 s ::: Wallclock Time = 255.66 s
+84.81% - Simulation Time = 169.62 s ::: Wallclock Time = 276.83 s
+92.19% - Simulation Time = 184.38 s ::: Wallclock Time = 298.08 s
+Estimated wallclock time remaining: 25 seconds
+99.63% - Simulation Time = 199.27 s ::: Wallclock Time = 320.01 s
+Finished simulation.
+Simulation of 200.0 seconds took in wallclock time 321.1 seconds.
+
+STORE TCP FLOW RESULTS
+  > Opening TCP flow log files:
+    >> Opened: /work/runs/cubic_1584_200/logs_ns3/tcp_flows.csv
+    >> Opened: /work/runs/cubic_1584_200/logs_ns3/tcp_flows.txt
+  > Writing tcp_flows.txt header
+  > Writing log files line-by-line
+  > Total TCP flow log entries to write... 1
+  > Closing TCP flow log files:
+    >> Closed: /work/runs/cubic_1584_200/logs_ns3/tcp_flows.csv
+    >> Closed: /work/runs/cubic_1584_200/logs_ns3/tcp_flows.txt
+  > TCP flow log files have been written
+
+STORE UDP BURST RESULTS
+  > Not enabled, so no UDP burst results are written
+
+STORE PINGMESH RESULTS
+  > Not enabled, so no pingmesh results are written
+
+CLEAN-UP
+  > Simulator is destroyed
+
+TIMING RESULTS
+------
+[    0.0 -     0.0] (0.0 s) :: Configure run and logs directory
+[    0.0 -     0.0] (0.0 s) :: Configure simulator
+[    0.0 -     0.0] (0.0 s) :: Setup TCP parameters
+[    0.0 -     0.8] (0.8 s) :: Create initial single forwarding state
+[    0.8 -     4.5] (3.7 s) :: Setup routing arbiter on each node
+[    4.5 -     4.5] (0.0 s) :: Create initial single forwarding state
+[    4.5 -     4.5] (0.0 s) :: Set first GSL interface bandwidth
+[    4.5 -     4.5] (0.0 s) :: Read flow schedule
+[    4.5 -     4.5] (0.0 s) :: Remove previous flow log files
+[    4.5 -     4.5] (0.0 s) :: Setup TCP flow sinks
+[    4.5 -     4.5] (0.0 s) :: Setup traffic TCP flow starter
+[    4.5 -     4.5] (0.0 s) :: Whatever is between previous timestamp and the simulation run
+[    4.5 -   325.6] (321.1 s) :: Run simulation
+[  325.6 -   325.6] (0.0 s) :: Write TCP flow log files
+[  325.6 -   325.7] (0.1 s) :: Destroy simulator
+
+BASIC SIMULATION END
+  > Date... Thursday October  8, 2026
+  > Time... 15:38:42
+

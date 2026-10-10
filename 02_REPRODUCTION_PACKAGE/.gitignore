@@ -1,0 +1,15 @@
+# Generated simulation data
+runs/
+state_2160/
+state_*/
+analysis_generated/
+figures_generated/
+
+# Large/transient logs
+*.log
+*.out
+*.tar.gz
+*.zip
+.DS_Store
+__pycache__/
+*.pyc

@@ -1,0 +1,131 @@
+diff --git a/src/internet/model/tcp-vegas.cc b/src/internet/model/tcp-vegas.cc
+index 22b669b..6945272 100644
+--- a/src/internet/model/tcp-vegas.cc
++++ b/src/internet/model/tcp-vegas.cc
+@@ -17,6 +17,9 @@
+ #include "tcp-socket-state.h"
+ 
+ #include "ns3/log.h"
++#include "ns3/simulator.h"
++
++#include <iostream>
+ 
+ namespace ns3
+ {
+@@ -57,6 +60,8 @@ TcpVegas::TcpVegas()
+       m_baseRtt(Time::Max()),
+       m_minRtt(Time::Max()),
+       m_cntRtt(0),
++      m_shiftCount(0),
++      m_lastAdaptiveReset(Seconds(-1000)),
+       m_doingVegasNow(true),
+       m_begSndNxt(0)
+ {
+@@ -71,6 +76,8 @@ TcpVegas::TcpVegas(const TcpVegas& sock)
+       m_baseRtt(sock.m_baseRtt),
+       m_minRtt(sock.m_minRtt),
+       m_cntRtt(sock.m_cntRtt),
++      m_shiftCount(sock.m_shiftCount),
++      m_lastAdaptiveReset(sock.m_lastAdaptiveReset),
+       m_doingVegasNow(true),
+       m_begSndNxt(0)
+ {
+@@ -194,6 +201,40 @@ TcpVegas::IncreaseWindow(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
+              * desidered throughput is currentCwnd * baseRtt
+              * target cwnd is throughput / minRtt
+              */
++            // Adaptive BaseRTT relearning for persistent upward path-delay shifts.
++            //
++            // A route-induced baseline change should persist across multiple RTT
++            // cycles. Short-lived RTT spikes are ignored.
++            const Time shiftThreshold = MilliSeconds(3);
++            const uint32_t persistenceCycles = 5;
++            const Time resetCooldown = Seconds(10);
++
++            if (m_minRtt > m_baseRtt + shiftThreshold &&
++                (Simulator::Now() - m_lastAdaptiveReset) > resetCooldown)
++            {
++                m_shiftCount++;
++            }
++            else
++            {
++                m_shiftCount = 0;
++            }
++
++            if (m_shiftCount >= persistenceCycles)
++            {
++                const Time oldBaseRtt = m_baseRtt;
++
++                m_baseRtt = m_minRtt;
++                m_shiftCount = 0;
++                m_lastAdaptiveReset = Simulator::Now();
++
++                std::cout
++                    << "ADAPTIVE_RESET,"
++                    << Simulator::Now().GetSeconds() << ","
++                    << oldBaseRtt.GetSeconds() * 1000.0 << ","
++                    << m_baseRtt.GetSeconds() * 1000.0
++                    << std::endl;
++            }
++
+             double tmp = m_baseRtt.GetSeconds() / m_minRtt.GetSeconds();
+             targetCwnd = static_cast<uint32_t>(segCwnd * tmp);
+             NS_LOG_DEBUG("Calculated targetCwnd = " << targetCwnd);
+@@ -206,6 +247,44 @@ TcpVegas::IncreaseWindow(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
+             diff = segCwnd - targetCwnd;
+             NS_LOG_DEBUG("Calculated diff = " << diff);
+ 
++            const char* traceAction;
++
++            if (diff > m_gamma && (tcb->m_cWnd < tcb->m_ssThresh))
++            {
++                traceAction = "EXIT_SLOW_START";
++            }
++            else if (tcb->m_cWnd < tcb->m_ssThresh)
++            {
++                traceAction = "SLOW_START";
++            }
++            else if (diff > m_beta)
++            {
++                traceAction = "DECREASE";
++            }
++            else if (diff < m_alpha)
++            {
++                traceAction = "INCREASE";
++            }
++            else
++            {
++                traceAction = "HOLD";
++            }
++
++            std::cout
++                << "VEGAS_TRACE,"
++                << Simulator::Now().GetSeconds() << ","
++                << m_baseRtt.GetSeconds() * 1000.0 << ","
++                << m_minRtt.GetSeconds() * 1000.0 << ","
++                << segCwnd << ","
++                << targetCwnd << ","
++                << diff << ","
++                << m_alpha << ","
++                << m_beta << ","
++                << m_gamma << ","
++                << tcb->m_ssThresh.Get() / tcb->m_segmentSize << ","
++                << traceAction
++                << std::endl;
++
+             if (diff > m_gamma && (tcb->m_cWnd < tcb->m_ssThresh))
+             {
+                 /*
+diff --git a/src/internet/model/tcp-vegas.h b/src/internet/model/tcp-vegas.h
+index 1271ea7..21fffa9 100644
+--- a/src/internet/model/tcp-vegas.h
++++ b/src/internet/model/tcp-vegas.h
+@@ -148,6 +148,8 @@ class TcpVegas : public TcpNewReno
+     Time m_baseRtt;               //!< Minimum of all Vegas RTT measurements seen during connection
+     Time m_minRtt;                //!< Minimum of all RTT measurements within last RTT
+     uint32_t m_cntRtt;            //!< Number of RTT measurements during last RTT
++    uint32_t m_shiftCount;        //!< Consecutive RTT cycles showing an upward baseline shift
++    Time m_lastAdaptiveReset;     //!< Time of last adaptive BaseRTT reset
+     bool m_doingVegasNow;         //!< If true, do Vegas for this RTT
+     SequenceNumber32 m_begSndNxt; //!< Right edge during last RTT
+ };
