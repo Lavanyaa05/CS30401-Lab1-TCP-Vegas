@@ -1,0 +1,57 @@
+{
+  "sources": {
+    "src/internet/model/tcp-vegas.cc": "a830a32e152419d03f01011a0726c2e66278c5aed62045a8b53ffcfb226ce568",
+    "src/internet/model/tcp-vegas.h": "d342c5398361bc4e9f0f702333f8a55ee8304223dd882821f94c2d02a79d3d1a",
+    "scratch/main_satnet/main_satnet.cc": "947c3c4e86b8f71d318cfd93f35a54ebae5479f2f001ea1af7bdfd2d0c704183",
+    "scratch/main_satnet/vegas-experiment.h": "aaf34b1202a3acae150fdece702d99f18e2d6ee5cc1f85141170ed08948604db",
+    "scratch/main_satnet/vegas-queue-observer.h": "414142bd31bcd9a5d823e58687b21eac87226374ffebee104b0abec069d7a420",
+    "contrib/basic-sim/model/apps/tcp-flow-send-application.cc": "5c2dc25d0db8c5a4a8dbbf28341bb16c137c5c4e1e807c81215bc3967f603480",
+    "contrib/basic-sim/model/apps/vegas-flow-observer.h": "66452d180d2b001a002a9e92226bbdf15dac4cbd3e72a99ed25179e02b0ba8b3"
+  },
+  "states": {
+    "sat500": {
+      "state_sha256": "0744c1f0f583e1f73eef281552b7543c7153139895944fbe484dfbeb29cee1d0"
+    },
+    "default": {
+      "state_metadata_sha256": {
+        "isls.txt": "8586b19155b7a9df2db5c563229790313c8280504aa15821f56000fd095c6d6c",
+        "description.txt": "e9e2297b872bb727a52e10e288f4f2a3243228ac5e95a4b49ffa8b532bccfb6e",
+        "ground_stations.basic.txt": "2cf51f414e52cb1557a202f91f1bfbcc30b5238476fc26bd29086b5046b7612a",
+        "ground_stations.txt": "9a6f895ced480a880c7c5aa229be1cc6b23c2e85bca0b6ce312af823cdf57262",
+        "gsl_interfaces_info.txt": "8d0817a32dd3e624ec673fcb7babae33907c46b8e2acb55602c347e45f3a1138",
+        "node_ids.txt": "5315315c59a2975faeedc133d40e35b3418cf343b77a1e9775d93b9d7c7e98a2",
+        "tles.txt": "e8e944ac15ae28f2ba5fe8e0a845bdfe106694a1536711a52ec0e54f5ca29dd5"
+      }
+    },
+    "dense": {
+      "state_metadata_sha256": {
+        "isls.txt": "165821a83f2cd4a3652bda1ac57a000dc1f2f3821d2e800e07e99d16013d3dca",
+        "description.txt": "e9e2297b872bb727a52e10e288f4f2a3243228ac5e95a4b49ffa8b532bccfb6e",
+        "ground_stations.basic.txt": "2cf51f414e52cb1557a202f91f1bfbcc30b5238476fc26bd29086b5046b7612a",
+        "ground_stations.txt": "9a6f895ced480a880c7c5aa229be1cc6b23c2e85bca0b6ce312af823cdf57262",
+        "gsl_interfaces_info.txt": "175d9a446db312eff8d3e54e3f9643bfb1d2d14febae7060a0df4b0ea13eefa6",
+        "node_ids.txt": "e7e0e2786d465601969a99bccaca0c3addaf4edaa71eb2b327f0cb758e68e50e",
+        "tles.txt": "aae788915dd30e0fb957613c638f97a2d8987aee2823bcba6ec8243009f387d7"
+      }
+    }
+  },
+  "archives": {
+    "vegas-500-results_results.zip": "efe61fea2e6a7b0ae3d48b18278e15fb8b23916869a2a2bb808c8e18f34f06f0",
+    "vegas-evaluation_results.zip": "e8fbfc73015375511d35407fbd68c45c09c7ff201cb48444b7fb4c8728cd2794"
+  },
+  "reference_files": {
+    "reference/controls.csv": "b0d18057acd976eb775f53051e9b8c03d07ec90638cdab009b018c63af6e7a53",
+    "reference/path_default.csv": "49bd5418f2b13bdbf6d703f719d61075f814cc86d44c745651bf797f4e5f656c",
+    "reference/path_dense.csv": "aebca2d11db59c3d891c25d74ecde72b91d05ef71acd09c658725c38108b9be0",
+    "reference/path_sat500.csv": "7bd43c4871e1bf883c243fb27f6d4f6142ca01675a6bc0a3d296cdefc24b4cb1"
+  },
+  "vendor_files": {
+    "vendor/analyze_suite.py": "2b36f861eb5f1a6498cda4e31468267ccaaf340265e6bd0fe833d938d7491ff3",
+    "vendor/make_run.sh": "ccf066bba1a23ed958518ea41929ca8cefac4ce2a1ef6f803a7b8bb40b54f887",
+    "vendor/run_sim.sh": "c293c69cb87ae2f16d4c30e254d6860d99539d36a817596646da0b357e58c960",
+    "vendor/vegas-experiment.h": "aaf34b1202a3acae150fdece702d99f18e2d6ee5cc1f85141170ed08948604db",
+    "vendor/vegas-flow-observer.h": "66452d180d2b001a002a9e92226bbdf15dac4cbd3e72a99ed25179e02b0ba8b3",
+    "vendor/vegas-queue-observer.h": "414142bd31bcd9a5d823e58687b21eac87226374ffebee104b0abec069d7a420",
+    "vendor/vegas-window.patch": "aaf58894354ca26e36df117e157883c1ca4de2e8441eb1447d7e2798cfc4ac0f"
+  }
+}

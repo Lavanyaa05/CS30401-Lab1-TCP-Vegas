@@ -1,0 +1,136 @@
+--- a/src/internet/model/tcp-vegas.h
++++ b/src/internet/model/tcp-vegas.h
+@@ -16,6 +16,9 @@
+ #define TCPVEGAS_H
+ 
+ #include "tcp-congestion-ops.h"
++
++#include <deque>
++#include <utility>
+ 
+ namespace ns3
+ {
+@@ -142,6 +145,9 @@
+     void DisableVegas();
+ 
+   private:
++    Time m_baseRttWindow{Seconds(0)}; //!< Zero: original lifetime minimum
++    bool m_traceState{false}; //!< Diagnostic output, including in release builds
++    std::deque<std::pair<Time, Time>> m_recentRtts; //!< Monotonic RTT candidates
+     uint32_t m_alpha;             //!< Alpha threshold, lower bound of packets in network
+     uint32_t m_beta;              //!< Beta threshold, upper bound of packets in network
+     uint32_t m_gamma;             //!< Gamma threshold, limit on increase
+--- a/src/internet/model/tcp-vegas.cc
++++ b/src/internet/model/tcp-vegas.cc
+@@ -17,6 +17,10 @@
+ #include "tcp-socket-state.h"
+ 
+ #include "ns3/log.h"
++#include "ns3/boolean.h"
++#include "ns3/simulator.h"
++
++#include <iostream>
+ 
+ namespace ns3
+ {
+@@ -31,6 +35,16 @@
+                             .SetParent<TcpNewReno>()
+                             .AddConstructor<TcpVegas>()
+                             .SetGroupName("Internet")
++                            .AddAttribute("BaseRttWindow",
++                                          "RTT history duration; zero preserves original Vegas",
++                                          TimeValue(Seconds(0)),
++                                          MakeTimeAccessor(&TcpVegas::m_baseRttWindow),
++                                          MakeTimeChecker(Seconds(0)))
++                            .AddAttribute("TraceState",
++                                          "Write VEGAS_DECISION and VEGAS_STATE diagnostic lines",
++                                          BooleanValue(false),
++                                          MakeBooleanAccessor(&TcpVegas::m_traceState),
++                                          MakeBooleanChecker())
+                             .AddAttribute("Alpha",
+                                           "Lower bound of packets in network",
+                                           UintegerValue(2),
+@@ -65,6 +79,9 @@
+ 
+ TcpVegas::TcpVegas(const TcpVegas& sock)
+     : TcpNewReno(sock),
++      m_baseRttWindow(sock.m_baseRttWindow),
++      m_traceState(sock.m_traceState),
++      m_recentRtts(sock.m_recentRtts),
+       m_alpha(sock.m_alpha),
+       m_beta(sock.m_beta),
+       m_gamma(sock.m_gamma),
+@@ -101,7 +118,27 @@
+     m_minRtt = std::min(m_minRtt, rtt);
+     NS_LOG_DEBUG("Updated m_minRtt = " << m_minRtt);
+ 
+-    m_baseRtt = std::min(m_baseRtt, rtt);
++    if (m_baseRttWindow.IsZero())
++    {
++        // Control arm: exactly the original lifetime-minimum update.
++        m_baseRtt = std::min(m_baseRtt, rtt);
++    }
++    else
++    {
++        const Time now = Simulator::Now();
++        const Time cutoff = now - m_baseRttWindow;
++        while (!m_recentRtts.empty() && m_recentRtts.front().first < cutoff)
++        {
++            m_recentRtts.pop_front();
++        }
++        // A newer sample no larger than an older one dominates that candidate.
++        while (!m_recentRtts.empty() && m_recentRtts.back().second >= rtt)
++        {
++            m_recentRtts.pop_back();
++        }
++        m_recentRtts.emplace_back(now, rtt);
++        m_baseRtt = m_recentRtts.front().second;
++    }
+     NS_LOG_DEBUG("Updated m_baseRtt = " << m_baseRtt);
+ 
+     // Update RTT counter
+@@ -132,6 +169,13 @@
+ TcpVegas::CongestionStateSet(Ptr<TcpSocketState> tcb, const TcpSocketState::TcpCongState_t newState)
+ {
+     NS_LOG_FUNCTION(this << tcb << newState);
++    if (m_traceState)
++    {
++        std::clog << "VEGAS_STATE," << Simulator::Now().GetNanoSeconds() << ','
++                  << Simulator::GetContext() << ',' << static_cast<const void*>(this) << ','
++                  << static_cast<unsigned>(newState) << ',' << tcb->GetCwndInSegments()
++                  << ',' << tcb->m_ssThresh.Get() / tcb->m_segmentSize << '\n';
++    }
+     if (newState == TcpSocketState::CA_OPEN)
+     {
+         EnableVegas(tcb);
+@@ -194,7 +238,10 @@
+              * desidered throughput is currentCwnd * baseRtt
+              * target cwnd is throughput / minRtt
+              */
+-            double tmp = m_baseRtt.GetSeconds() / m_minRtt.GetSeconds();
++            // At expiration, the current Vegas cycle can still contain an older
++            // smaller sample. Clamp for this cycle to avoid an unsigned underflow.
++            const Time effectiveBaseRtt = std::min(m_baseRtt, m_minRtt);
++            double tmp = effectiveBaseRtt.GetSeconds() / m_minRtt.GetSeconds();
+             targetCwnd = static_cast<uint32_t>(segCwnd * tmp);
+             NS_LOG_DEBUG("Calculated targetCwnd = " << targetCwnd);
+             NS_ASSERT(segCwnd >= targetCwnd); // implies baseRtt <= minRtt
+@@ -205,6 +252,18 @@
+              */
+             diff = segCwnd - targetCwnd;
+             NS_LOG_DEBUG("Calculated diff = " << diff);
++            if (m_traceState)
++            {
++                // All RTT/time columns are integer nanoseconds. cwnd is pre-decision.
++                std::clog << "VEGAS_DECISION," << Simulator::Now().GetNanoSeconds() << ','
++                          << Simulator::GetContext() << ',' << static_cast<const void*>(this)
++                          << ',' << m_baseRttWindow.GetNanoSeconds()
++                          << ',' << m_baseRtt.GetNanoSeconds()
++                          << ',' << effectiveBaseRtt.GetNanoSeconds()
++                          << ',' << m_minRtt.GetNanoSeconds() << ',' << segCwnd
++                          << ',' << diff << ','
++                          << tcb->m_ssThresh.Get() / tcb->m_segmentSize << '\n';
++            }
+ 
+             if (diff > m_gamma && (tcb->m_cWnd < tcb->m_ssThresh))
+             {

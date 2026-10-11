@@ -1,0 +1,5 @@
+[project]
+name = "vegas-evaluation"
+version = "1.0.0"
+requires-python = ">=3.10"
+dependencies = ["matplotlib>=3.8,<4"]

@@ -27,6 +27,13 @@ code/
 ```
 
 ## Reproduce everything
+
+For the separate 30-case matched adaptive-versus-refresh study (including
+five-flow fairness), see [the matched comparison package](code/matched_comparison/README.md)
+and its [Linux runbook](code/matched_comparison/LINUX_RUNBOOK.md).
+This study requires the original instrumented refresh environment and states;
+it is independent of the existing reproduction workflow below.
+
   Start the fresh course container with /code mounted at /work/code:
 
 ```bash
