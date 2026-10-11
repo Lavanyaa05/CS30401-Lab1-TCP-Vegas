@@ -67,4 +67,4 @@ src/internet/model/tcp-vegas.h
 - Main standard-vs-adaptive throughput comparison: `/work/figures_generated/standard_vs_adaptive.png`
 - CUBIC topology-capacity control: `/work/figures_generated/cubic_controls.png`
 - Numeric values used by generated figures: `/work/analysis_generated/summary.csv`
-- Internal Vegas mechanism traces from development are included under `results/reference/` for audit/reference, but they are not required by `run_all.sh`.
+- Internal Vegas mechanism traces from development are included under `results/reference/`
