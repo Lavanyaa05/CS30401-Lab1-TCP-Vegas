@@ -2,12 +2,6 @@
 
 This repository contains the reproducibility package for our CS30401 Lab 1 study of TCP Vegas under dynamic LEO routing.
 
-## Problem and idea
-
-Standard TCP Vegas keeps `BaseRTT` as the minimum RTT observed over the connection. When a LEO route change causes a persistent upward propagation-delay shift, that historical minimum can become stale. Vegas can then interpret the new propagation baseline as queueing, repeatedly reduce `cwnd`, and settle at low throughput.
-
-Our modification adds a sender-side adaptive BaseRTT relearning rule. If the per-cycle minimum RTT remains more than 3 ms above the stored BaseRTT for 5 consecutive Vegas cycles, and at least 10 s have passed since the previous reset, BaseRTT is relearned from the current minimum RTT. The implementation uses sender RTT history only; it does not require satellite IDs, route oracle information, receiver changes, or network signaling.
-
 ## Environment
 
 Use the official course image:
@@ -22,6 +16,7 @@ The experiments were run with ns-3.48 + the course Hypatia-based LEO environment
 
 ```text
 code/
+  .gitattributes             
   adaptive-vegas.patch       Final ns-3 patch
   run_all.sh                 End-to-end reproduction
   generate_state.sh          2160-satellite controlled topology generation
@@ -32,25 +27,16 @@ code/
 results/reference/            Compact reference traces used during development
 ```
 
-Generated constellation states, ns-3 trees, run directories, and large logs are intentionally excluded.
-
 ## Reproduce everything
-
-Start a **fresh official course container** with '/code' folder inside `/work`. Then run:
+  Start the fresh course container with /code mounted at /work/code:
 
 ```bash
 bash /work/code/run_all.sh
-```
+``` 
 
-The script performs the following in order:
+### Expected runtime: ~15–25 minutes end-to-end.
+What it does: Automatically generates the 2160-satellite state, executes unmodified standard Vegas and CUBIC baselines, applies the patch, builds/runs adaptive Vegas and congestion-safety experiments, and extracts all summary tables and comparison figures
 
-1. Generates the controlled 2160-satellite state (72 planes × 30 satellites; Seoul and London ground stations).
-2. Runs standard Vegas on 1584 and 2160 satellites.
-3. Runs CUBIC controls on both topologies.
-4. Applies `adaptive-vegas.patch` to the clean ns-3.48 tree.
-5. Runs adaptive Vegas on 2160 and 1584 satellites.
-6. Runs the congestion-safety control with one flow from 0 s and four additional flows from 35 s.
-7. Extracts a summary CSV and generates comparison figures.
 
 Output locations:
 
@@ -60,37 +46,15 @@ Output locations:
 /work/figures_generated/
 ```
 
-### Expected runtime
-
-On the machine used for development, each 200 s simulation was roughly a few minutes or less, while the 60 s congestion-safety run was about half a minute. End-to-end runtime depends on CPU and state-generation time; allow roughly 15–30 minutes for the complete script.
-
-## Key reproduced results
-
-The development runs produced the following main averages:
-
-| Experiment | Average throughput |
-|---|---:|
-| Standard Vegas, 1584 satellites | 41.5 Mbit/s |
-| Standard Vegas, 2160 satellites | 12.1 Mbit/s |
-| Adaptive Vegas, 1584 satellites | 64.7 Mbit/s |
-| Adaptive Vegas, 2160 satellites | 71.0 Mbit/s |
-| CUBIC, 1584 satellites | 95.9 Mbit/s |
-| CUBIC, 2160 satellites | 95.9 Mbit/s |
-
-In the 2160-satellite case, the important route event was an upward propagation-RTT change near 39.9 s. Instrumentation showed stale BaseRTT causing Vegas `diff` to exceed its decrease threshold after the route shift. The adaptive sender detected the persistent shift and reset BaseRTT at approximately 40.48 s in the development run.
-
-The congestion-safety control introduced four competing flows at 35 s. No `ADAPTIVE_RESET` was triggered in that run, providing evidence that this tested queueing/contention event did not falsely trigger the relearning rule.
-
-These values are reference results, not hard-coded pass criteria. Small timing differences can occur across machines; the scripts regenerate results from the simulator.
-
 ## Patch details
 
 Apply manually, if desired:
 
 ```bash
 cd "$NS3_DIR"
-git apply --check /work/<repo-folder>/code/adaptive-vegas.patch
-git apply /work/<repo-folder>/code/adaptive-vegas.patch
+git apply --ignore-space-change --ignore-whitespace --check /work/code/adaptive-vegas.patch
+git apply --ignore-space-change --ignore-whitespace /work/code/adaptive-vegas.patch
+./ns3 build
 ```
 
 The patch modifies only:
@@ -99,11 +63,6 @@ The patch modifies only:
 src/internet/model/tcp-vegas.cc
 src/internet/model/tcp-vegas.h
 ```
-
-## Congestion-safety schedule
-
-`code/config/congestion_schedule.csv` uses five flows from Seoul (1584) to London (1585): flow 0 begins at 0 s; flows 1–4 begin at 35 s. All flows in a run use the same TCP variant, as required by the course framework.
-
 ## Figure/table mapping
 
 - Main standard-vs-adaptive throughput comparison: `/work/figures_generated/standard_vs_adaptive.png`
