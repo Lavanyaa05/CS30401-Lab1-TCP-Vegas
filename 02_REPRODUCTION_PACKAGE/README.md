@@ -24,7 +24,6 @@ code/
   analysis/                  Result extraction + original analysis scripts
   plots/                     Figure generation
   config/                    Reference schedules/configuration
-results/reference/            Compact reference traces used during development
 ```
 
 ## Reproduce everything
@@ -69,7 +68,3 @@ src/internet/model/tcp-vegas.h
 - CUBIC topology-capacity control: `/work/figures_generated/cubic_controls.png`
 - Numeric values used by generated figures: `/work/analysis_generated/summary.csv`
 - Internal Vegas mechanism traces from development are included under `results/reference/` for audit/reference, but they are not required by `run_all.sh`.
-
-## Limitations
-
-The 2160-satellite topology is a controlled density perturbation, not a claim about a particular deployed Starlink configuration. The adaptive parameters (3 ms threshold, 5 cycles, 10 s cooldown) are a deliberately simple first-pass setting and are not claimed to be globally optimal. The safety result demonstrates no false reset under the tested multi-flow contention scenario; it does not prove safety under every possible queueing pattern.
