@@ -36,10 +36,10 @@ Generated constellation states, ns-3 trees, run directories, and large logs are 
 
 ## Reproduce everything
 
-Start a **fresh official course container** with this repository mounted somewhere under `/work`. Then run:
+Start a **fresh official course container** with '/code' folder inside `/work`. Then run:
 
 ```bash
-bash /work/<repo-folder>/code/run_all.sh
+bash /work/code/run_all.sh
 ```
 
 The script performs the following in order:
