@@ -14,19 +14,19 @@ STATE2160=/work/state_2160
 
 mkdir -p "$RUNS" "$ANALYSIS" "$FIGURES"
 
-# echo "[1/6] Generate the 2160-satellite state"
-# "$ROOT/generate_state.sh" "$STATE2160"
+echo "[1/6] Generate the 2160-satellite state"
+"$ROOT/generate_state.sh" "$STATE2160"
 
-# echo "[2/6] Run unmodified standard Vegas and CUBIC baselines"
-# "$ROOT/experiments/standard_baselines.sh" "$STATE2160/state" "$RUNS"
+echo "[2/6] Run unmodified standard Vegas and CUBIC baselines"
+"$ROOT/experiments/standard_baselines.sh" "$STATE2160/state" "$RUNS"
 
-# echo "[3/6] Apply Adaptive Vegas patch"
-# cd "$NS3_DIR"
-# if ! git apply  --ignore-space-change --ignore-whitespace --check "$ROOT/adaptive-vegas.patch"; then
-#   echo "ERROR: patch cannot be cleanly applied. Start from a fresh course container/ns-3 tree." >&2
-#   exit 1
-# fi
-# git apply  --ignore-space-change --ignore-whitespace "$ROOT/adaptive-vegas.patch"
+echo "[3/6] Apply Adaptive Vegas patch"
+cd "$NS3_DIR"
+if ! git apply  --ignore-space-change --ignore-whitespace --check "$ROOT/adaptive-vegas.patch"; then
+  echo "ERROR: patch cannot be cleanly applied. Start from a fresh course container/ns-3 tree." >&2
+  exit 1
+fi
+git apply  --ignore-space-change --ignore-whitespace "$ROOT/adaptive-vegas.patch"
 
 echo "[4/6] Run adaptive and congestion-safety experiments"
 "$ROOT/experiments/adaptive_runs.sh" "$STATE2160/state" "$RUNS" "$ANALYSIS"
