@@ -49,7 +49,7 @@ def main():
                 controls.append(row)
     fields = list(dict.fromkeys(k for row in controls for k in row))
     with (ROOT / 'reference/controls.csv').open('w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=fields)
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator='\n')
         w.writeheader()
         w.writerows(controls)
     index['reference_files'] = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()

@@ -238,7 +238,9 @@ class IntegrationTests(unittest.TestCase):
             def fake_command(command, log, env, cwd=None):
                 calls.append(str(command[1]))
                 if str(command[1]).endswith('/ns3') or str(command[1]).endswith('\\ns3'):
-                    write(ns3 / 'build/scratch/ns3.48-main_satnet-default', 'synthetic executable')
+                    binary = ns3 / 'build/scratch/ns3.48-main_satnet-default'
+                    write(binary, 'synthetic executable')
+                    binary.chmod(0o755)
                 elif Path(command[1]).name == 'make_run.sh':
                     directory = Path(command[2])
                     spec = common.read_json(directory / 'evaluation.json')
@@ -282,6 +284,13 @@ class IntegrationTests(unittest.TestCase):
                     runner.run(args)
 
 class InstallerTests(unittest.TestCase):
+    def test_bundled_evidence_hashes_and_control_line_endings(self):
+        common.verify_package()
+        controls = (HERE / 'reference/controls.csv').read_bytes()
+        self.assertNotIn(b'\r', controls)
+        self.assertEqual(hashlib.sha256(controls.replace(b'\n', b'\r\n')).hexdigest(),
+                         'b0d18057acd976eb775f53051e9b8c03d07ec90638cdab009b018c63af6e7a53')
+
     def test_real_vegas_source_integration_and_backup(self):
         git = shutil.which('git')
         if not git:
@@ -344,18 +353,24 @@ class InstallerTests(unittest.TestCase):
 class StateTests(unittest.TestCase):
     def test_supplied_500_state_hash_and_verified_route_events(self):
         archive = Path.home() / 'Downloads/Telegram Desktop/Vegas_500_AllInOne.zip'
-        if not archive.is_file():
-            self.skipTest('Optional original 500 input ZIP is not present at the development location')
-        with tempfile.TemporaryDirectory() as tmp, ZipFile(archive) as z:
+        supplied_state = Path(os.environ.get('STATE_500', str(
+            Path.home() / 'cs30401/work/Vegas_500_AllInOne/state500/state')))
+        if not archive.is_file() and not supplied_state.is_dir():
+            self.skipTest('Optional original 500 input ZIP or extracted STATE_500 is not present')
+        with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp) / 'state'
-            prefix = 'Vegas_500_AllInOne/state500/state/'
-            for name in z.namelist():
-                if name.startswith(prefix) and not name.endswith('/'):
-                    relative = Path(name[len(prefix):])
-                    self.assertNotIn('..', relative.parts)
-                    target = state / relative
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes(z.read(name))
+            if supplied_state.is_dir():
+                shutil.copytree(supplied_state, state)
+            else:
+                with ZipFile(archive) as z:
+                    prefix = 'Vegas_500_AllInOne/state500/state/'
+                    for name in z.namelist():
+                        if name.startswith(prefix) and not name.endswith('/'):
+                            relative = Path(name[len(prefix):])
+                            self.assertNotIn('..', relative.parts)
+                            target = state / relative
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            target.write_bytes(z.read(name))
             verified = common.check_state(state, 'sat500')
             self.assertEqual(verified['full_tree_sha256'], common.reference()['states']['sat500']['state_sha256'])
             self.assertTrue(verified['reference_routes_verified'])

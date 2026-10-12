@@ -40,7 +40,7 @@
     "vegas-evaluation_results.zip": "e8fbfc73015375511d35407fbd68c45c09c7ff201cb48444b7fb4c8728cd2794"
   },
   "reference_files": {
-    "reference/controls.csv": "b0d18057acd976eb775f53051e9b8c03d07ec90638cdab009b018c63af6e7a53",
+    "reference/controls.csv": "aedefc1f33551a3f9882937ef4c03937620c134f8e4c81546bc4ccccad92db55",
     "reference/path_default.csv": "49bd5418f2b13bdbf6d703f719d61075f814cc86d44c745651bf797f4e5f656c",
     "reference/path_dense.csv": "aebca2d11db59c3d891c25d74ecde72b91d05ef71acd09c658725c38108b9be0",
     "reference/path_sat500.csv": "7bd43c4871e1bf883c243fb27f6d4f6142ca01675a6bc0a3d296cdefc24b4cb1"

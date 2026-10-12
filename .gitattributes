@@ -1,1 +1,3 @@
 *.sh text eol=lf
+02_REPRODUCTION_PACKAGE/code/matched_comparison/reference/** text eol=lf
+02_REPRODUCTION_PACKAGE/code/matched_comparison/vendor/** text eol=lf

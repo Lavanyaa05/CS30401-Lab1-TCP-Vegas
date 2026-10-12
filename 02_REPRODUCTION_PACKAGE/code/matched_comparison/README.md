@@ -123,13 +123,19 @@ cooldown, downward-minimum, and independent-instance boundaries.
 
 Synthetic fixtures are test data, not satellite results. The Linux smoke check
 and full ns-3 simulation/build remain required before interpreting performance.
+The optional state test also accepts the extracted Linux course state at
+`STATE_500` (default: `~/cs30401/work/Vegas_500_AllInOne/state500/state`), copying
+it into a temporary directory before testing tamper detection.
 
 ## Sources and licenses
 
 `vendor/` contains unchanged code from the supplied `Vegas_Evaluation.zip` and
 `Vegas_500_AllInOne.zip`. `reference/index.json` records result-archive, vendor,
 and reference hashes; `reference/controls.csv` contains the twelve measured
-refresh controls. The dependency project and lock are copied unchanged from
+refresh controls. This generated CSV uses LF line endings, pinned by Git
+attributes; its checksum records those bytes. Its values are unchanged from
+the original CRLF export, whose checksum is verified by a regression test.
+The dependency project and lock are copied unchanged from
 the evaluation package. The model modifications retain ns-3's GPL-2.0-only
 notices; the course shell helpers retain their course provenance. Adaptive
 behavior originates in this repository's `03_ADAPTIVE_IMPLEMENTATION` patch.
