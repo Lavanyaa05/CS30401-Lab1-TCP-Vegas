@@ -1,0 +1,524 @@
+diff --git a/contrib/basic-sim/model/apps/tcp-flow-send-application.cc b/contrib/basic-sim/model/apps/tcp-flow-send-application.cc
+index bb9ab06..e8584fb 100644
+--- a/contrib/basic-sim/model/apps/tcp-flow-send-application.cc
++++ b/contrib/basic-sim/model/apps/tcp-flow-send-application.cc
+@@ -1,3 +1,4 @@
++#include "vegas-flow-observer.h"
+ #include <memory>
+ #include <map>
+ /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+@@ -143,6 +144,7 @@ void TcpFlowSendApplication::StartApplication(void) { // Called at time specifie
+     // Create the socket if not already
+     if (!m_socket) {
+         m_socket = Socket::CreateSocket(GetNode(), m_tid);
++        vegas_eval::AttachFlow(m_socket, m_baseLogsDir, m_tcpFlowId);
+ 
+         // Must be TCP basically
+         if (m_socket->GetSocketType() != Socket::NS3_SOCK_STREAM &&
+diff --git a/contrib/basic-sim/model/apps/vegas-flow-observer.h b/contrib/basic-sim/model/apps/vegas-flow-observer.h
+new file mode 100644
+index 0000000..6ed4e4f
+--- /dev/null
++++ b/contrib/basic-sim/model/apps/vegas-flow-observer.h
+@@ -0,0 +1,90 @@
++#ifndef VEGAS_FLOW_OBSERVER_H
++#define VEGAS_FLOW_OBSERVER_H
++#include "ns3/core-module.h"
++#include "ns3/tcp-socket-base.h"
++#include <cstdlib>
++#include <fstream>
++#include <iostream>
++#include <map>
++#include <memory>
++#include <string>
++
++namespace vegas_eval
++{
++/** Counters from actual TCP Tx and Retransmission trace events. */
++struct TcpBin
++{
++    uint64_t dataTx{0}, dataBytes{0}, retransmissions{0}, retransmittedBytes{0};
++};
++
++/** Sender-only observer; ignores ACK-only and SYN transmissions in data counts. */
++struct FlowObserver
++{
++    std::string prefix; ///< Log prefix containing course flow ID.
++    std::map<uint64_t, TcpBin> bins; ///< One-second counters.
++    std::ofstream retx, state; ///< Detailed events for causal inspection.
++    explicit FlowObserver(const std::string& p) : prefix(p)
++    {
++        retx.open(prefix + "_retransmissions.csv");
++        state.open(prefix + "_cong_state.csv");
++        NS_ABORT_MSG_IF(!retx || !state, "Cannot open TCP diagnostic files");
++        retx << "time_ns,sequence,payload_bytes\n";
++        state << "time_ns,old_state,new_state\n";
++    }
++    /** Count all transmitted data packets, including retransmissions. */
++    void Tx(ns3::Ptr<const ns3::Packet> p, const ns3::TcpHeader&, ns3::Ptr<const ns3::TcpSocketBase>)
++    {
++        if (!p->GetSize()) return;
++        auto& b = bins[ns3::Simulator::Now().GetNanoSeconds() / 1000000000LL];
++        ++b.dataTx;
++        b.dataBytes += p->GetSize();
++    }
++    /** Count ns-3's explicit data retransmission notification. */
++    void Retx(ns3::Ptr<const ns3::Packet> p, const ns3::TcpHeader& h,
++              const ns3::Address&, const ns3::Address&, ns3::Ptr<const ns3::TcpSocketBase>)
++    {
++        if (!p->GetSize()) return;
++        const auto now = ns3::Simulator::Now().GetNanoSeconds();
++        auto& b = bins[now / 1000000000LL];
++        ++b.retransmissions;
++        b.retransmittedBytes += p->GetSize();
++        retx << now << ',' << h.GetSequenceNumber().GetValue() << ',' << p->GetSize() << '\n';
++    }
++    /** Record congestion state transitions; these alone do not prove packet loss. */
++    void State(ns3::TcpSocketState::TcpCongState_t oldState, ns3::TcpSocketState::TcpCongState_t newState)
++    {
++        state << ns3::Simulator::Now().GetNanoSeconds() << ','
++              << static_cast<unsigned>(oldState) << ',' << static_cast<unsigned>(newState) << '\n';
++    }
++    /** Flush at Simulator::Destroy, after the course simulation has finished. */
++    void Finish()
++    {
++        std::ofstream out(prefix + "_extra_bins.csv");
++        NS_ABORT_MSG_IF(!out, "Cannot write TCP counters");
++        out << "start_s,data_tx_packets,data_tx_payload_bytes,retransmissions,retransmitted_payload_bytes\n";
++        for (const auto& [second, b] : bins)
++            out << second << ',' << b.dataTx << ',' << b.dataBytes << ','
++                << b.retransmissions << ',' << b.retransmittedBytes << '\n';
++        retx.close();
++        state.close();
++    }
++};
++
++/** Keep observer ownership until simulator teardown. */
++inline void FinishFlow(std::shared_ptr<FlowObserver> observer) { observer->Finish(); }
++
++/** Attach immediately after socket creation, before Connect() or any payload. */
++inline void AttachFlow(ns3::Ptr<ns3::Socket> socket, const std::string& logsDir, uint64_t flowId)
++{
++    const char* enabled = std::getenv("VEGAS_EXTRA_TRACE");
++    if (!enabled || std::string(enabled) != "1") return;
++    auto observer = std::make_shared<FlowObserver>(logsDir + "/tcp_flow_" + std::to_string(flowId));
++    bool a = socket->TraceConnectWithoutContext("Tx", ns3::MakeCallback(&FlowObserver::Tx, observer.get()));
++    bool b = socket->TraceConnectWithoutContext("Retransmission", ns3::MakeCallback(&FlowObserver::Retx, observer.get()));
++    bool c = socket->TraceConnectWithoutContext("CongState", ns3::MakeCallback(&FlowObserver::State, observer.get()));
++    NS_ABORT_MSG_IF(!a || !b || !c, "Required TCP traces unavailable: expected ns-3.48");
++    ns3::Simulator::ScheduleDestroy(&FinishFlow, observer);
++    std::cout << "VEGAS_FLOW_BINDING," << flowId << '\n';
++}
++} // namespace vegas_eval
++#endif
+diff --git a/scratch/main_satnet/main_satnet.cc b/scratch/main_satnet/main_satnet.cc
+index 774f5c1..d8b2849 100644
+--- a/scratch/main_satnet/main_satnet.cc
++++ b/scratch/main_satnet/main_satnet.cc
+@@ -1,3 +1,6 @@
++#include "vegas-queue-observer.h"
++// VEGAS_EVALUATION_TRACING_V1
++#include "vegas-experiment.h"
+ /*
+  * Copyright (c) 2020 ETH Zurich
+  *
+@@ -43,6 +46,8 @@
+ using namespace ns3;
+ 
+ int main(int argc, char *argv[]) {
++    ConfigureVegasExperiment();
++
+ 
+     // No buffering of printf
+     setbuf(stdout, nullptr);
+@@ -89,7 +94,15 @@ int main(int argc, char *argv[]) {
+     PingmeshScheduler pingmeshScheduler(basicSimulation, topology); // Requires enable_pingmesh_scheduler=true
+ 
+     // Run simulation
++    std::unique_ptr<vegas_eval::QueueObserver> vegasQueues;
++    const char* extraTrace = std::getenv("VEGAS_EXTRA_TRACE");
++    if (extraTrace && std::string(extraTrace) == "1")
++    {
++        vegasQueues = std::make_unique<vegas_eval::QueueObserver>(
++            basicSimulation->GetLogsDir(), basicSimulation->GetSimulationEndTimeNs());
++    }
+     basicSimulation->Run();
++    if (vegasQueues) vegasQueues->Finish();
+ 
+     // Write flow results
+     tcpFlowScheduler.WriteResults();
+diff --git a/scratch/main_satnet/vegas-experiment.h b/scratch/main_satnet/vegas-experiment.h
+new file mode 100644
+index 0000000..5593abc
+--- /dev/null
++++ b/scratch/main_satnet/vegas-experiment.h
+@@ -0,0 +1,33 @@
++// Original experiment configuration helper. The ns-3 model patch uses GPL-2.0-only.
++#ifndef VEGAS_EXPERIMENT_H
++#define VEGAS_EXPERIMENT_H
++
++#include "ns3/core-module.h"
++#include "ns3/tcp-vegas.h"
++
++#include <cmath>
++#include <cstdlib>
++#include <iostream>
++#include <string>
++
++inline void ConfigureVegasExperiment()
++{
++    double seconds = 0.0;
++    const char* raw = std::getenv("VEGAS_WINDOW_S");
++    if (raw)
++    {
++        char* end = nullptr;
++        seconds = std::strtod(raw, &end);
++        NS_ABORT_MSG_IF(end == raw || *end != '\0' || !std::isfinite(seconds) ||
++                            seconds < 0.0 || seconds > 3600.0,
++                        "VEGAS_WINDOW_S must be a finite number from 0 to 3600");
++    }
++    const char* trace = std::getenv("VEGAS_TRACE");
++    const bool enabled = trace && std::string(trace) == "1";
++    ns3::TcpVegas::GetTypeId();
++    ns3::Config::SetDefault("ns3::TcpVegas::BaseRttWindow", ns3::TimeValue(ns3::Seconds(seconds)));
++    ns3::Config::SetDefault("ns3::TcpVegas::TraceState", ns3::BooleanValue(enabled));
++    std::cout << "VEGAS_CONFIG,window_s=" << seconds << ",trace=" << enabled << '\n';
++}
++#endif
++
+diff --git a/scratch/main_satnet/vegas-queue-observer.h b/scratch/main_satnet/vegas-queue-observer.h
+new file mode 100644
+index 0000000..ef9408e
+--- /dev/null
++++ b/scratch/main_satnet/vegas-queue-observer.h
+@@ -0,0 +1,190 @@
++// Experiment instrumentation for ns-3.48. This header changes no network decisions.
++#ifndef VEGAS_QUEUE_OBSERVER_H
++#define VEGAS_QUEUE_OBSERVER_H
++#include "ns3/core-module.h"
++#include "ns3/network-module.h"
++#include "ns3/traffic-control-layer.h"
++#include <algorithm>
++#include <cstdlib>
++#include <fstream>
++#include <iomanip>
++#include <iostream>
++#include <memory>
++#include <string>
++#include <vector>
++
++namespace vegas_eval
++{
++/** One-second aggregate queue statistics, including both data and ACK paths. */
++struct QueueBin
++{
++    long double packetNs{0}; ///< Integral of summed device queue occupancy.
++    uint32_t peakSingleQueue{0}; ///< Largest individual queue occupancy in this bin.
++    uint64_t drops{0}; ///< Device queue Drop events.
++    uint64_t tcDrops{0}; ///< Packets rejected before a stopped device queue.
++};
++
++/** Observe all exposed TxQueue attributes without polling or packet copying. */
++class QueueObserver
++{
++  public:
++    /** Per-device state; addresses stay stable through unique_ptr allocation. */
++    struct Device
++    {
++        QueueObserver* owner{}; ///< Owning observer.
++        ns3::Ptr<ns3::Queue<ns3::Packet>> queue; ///< Observed queue.
++        uint32_t node{}, device{}, current{}, peak{}; ///< Device identity and occupancy.
++        std::string type; ///< NetDevice runtime type.
++        int64_t lastNs{0}; ///< Last integrated time.
++        long double packetNs{0}; ///< Full-run occupancy integral.
++        uint64_t drops{0}; ///< Queue drop count.
++        /** Integrate the old occupancy up to a specified time, splitting at seconds. */
++        void Advance(int64_t until)
++        {
++            until = std::min(until, owner->m_endNs);
++            while (lastNs < until)
++            {
++                const auto bin = static_cast<size_t>(lastNs / 1000000000LL);
++                const int64_t next = std::min(until, static_cast<int64_t>((bin + 1) * 1000000000LL));
++                const long double area = static_cast<long double>(current) * (next - lastNs);
++                packetNs += area;
++                owner->m_bins.at(bin).packetNs += area;
++                owner->m_bins.at(bin).peakSingleQueue =
++                    std::max(owner->m_bins.at(bin).peakSingleQueue, current);
++                lastNs = next;
++            }
++        }
++        /** Handle every queue occupancy transition, including short bursts. */
++        void Change(uint32_t oldValue, uint32_t newValue)
++        {
++            NS_ABORT_MSG_IF(oldValue != current, "Queue observer lost an occupancy transition");
++            const auto now = ns3::Simulator::Now().GetNanoSeconds();
++            Advance(now);
++            current = newValue;
++            peak = std::max(peak, newValue);
++            if (now < owner->m_endNs)
++            {
++                auto& bin = owner->m_bins.at(now / 1000000000LL);
++                bin.peakSingleQueue = std::max(bin.peakSingleQueue, newValue);
++            }
++        }
++        /** Count only queue Drop events; no double-counting MacTxDrop. */
++        void Drop(ns3::Ptr<const ns3::Packet> p)
++        {
++            const auto now = ns3::Simulator::Now().GetNanoSeconds();
++            if (now >= owner->m_endNs) return;
++            ++drops;
++            ++owner->m_bins.at(now / 1000000000LL).drops;
++            owner->m_dropFile << now << ',' << node << ',' << device << ','
++                             << p->GetUid() << ',' << p->GetSize() << '\n';
++        }
++    };
++
++    /** Observe the separate no-qdisc, stopped-device-queue drop branch. */
++    static void TcDrop(QueueObserver* owner, uint32_t node, ns3::Ptr<const ns3::Packet> p)
++    {
++        const auto now = ns3::Simulator::Now().GetNanoSeconds();
++        if (now >= owner->m_endNs) return;
++        ++owner->m_bins.at(now / 1000000000LL).tcDrops;
++        owner->m_tcDropFile << now << ',' << node << ',' << p->GetUid() << ',' << p->GetSize() << '\n';
++    }
++
++    /** Bind queues after topology creation and before Simulator::Run(). */
++    QueueObserver(const std::string& logsDir, int64_t endNs)
++        : m_dir(logsDir), m_endNs(endNs), m_bins((endNs + 999999999LL) / 1000000000LL)
++    {
++        NS_ABORT_MSG_IF(endNs <= 0, "Invalid simulation end time");
++        m_dropFile.open(m_dir + "/queue_drop_events.csv");
++        NS_ABORT_MSG_IF(!m_dropFile, "Cannot open queue drop log");
++        m_dropFile << "time_ns,node,device,packet_uid,packet_bytes\n";
++        m_tcDropFile.open(m_dir + "/tc_drop_events.csv");
++        NS_ABORT_MSG_IF(!m_tcDropFile, "Cannot open traffic-control drop log");
++        m_tcDropFile << "time_ns,node,packet_uid,packet_bytes\n";
++        uint32_t unobserved = 0;
++        for (auto it = ns3::NodeList::Begin(); it != ns3::NodeList::End(); ++it)
++        {
++            auto node = *it;
++            auto tc = node->GetObject<ns3::TrafficControlLayer>();
++            if (tc)
++            {
++                bool ok = tc->TraceConnectWithoutContext("TcDrop",
++                    ns3::MakeBoundCallback(&QueueObserver::TcDrop, this, node->GetId()));
++                NS_ABORT_MSG_IF(!ok, "Traffic-control drop trace unavailable");
++                m_tcLayers.emplace_back(tc, node->GetId());
++            }
++            for (uint32_t i = 0; i < node->GetNDevices(); ++i)
++            {
++                auto nd = node->GetDevice(i);
++                ns3::PointerValue value;
++                if (!nd->GetAttributeFailSafe("TxQueue", value))
++                {
++                    if (nd->GetInstanceTypeId().GetName() != "ns3::LoopbackNetDevice") ++unobserved;
++                    continue;
++                }
++                auto q = value.Get<ns3::Queue<ns3::Packet>>();
++                NS_ABORT_MSG_IF(!q, "TxQueue is not a Queue<Packet>");
++                auto d = std::make_unique<Device>();
++                d->owner = this;
++                d->queue = q;
++                d->node = node->GetId();
++                d->device = i;
++                d->type = nd->GetInstanceTypeId().GetName();
++                d->current = q->GetNPackets();
++                d->peak = d->current;
++                bool a = q->TraceConnectWithoutContext("PacketsInQueue", ns3::MakeCallback(&Device::Change, d.get()));
++                bool b = q->TraceConnectWithoutContext("Drop", ns3::MakeCallback(&Device::Drop, d.get()));
++                NS_ABORT_MSG_IF(!a || !b, "Required queue trace could not be connected");
++                m_devices.push_back(std::move(d));
++            }
++        }
++        NS_ABORT_MSG_IF(m_devices.empty() || unobserved,
++                        "Incomplete queue coverage: check device types in this scenario");
++        std::cout << "VEGAS_QUEUE_BINDINGS," << m_devices.size() << '\n';
++    }
++
++    /** Save exact time-weighted occupancy after Run() and before Destroy(). */
++    void Finish()
++    {
++        NS_ABORT_MSG_IF(ns3::Simulator::Now().GetNanoSeconds() != m_endNs,
++                        "Simulation did not reach its configured stop time");
++        std::ofstream perDevice(m_dir + "/queue_devices.csv");
++        std::ofstream bins(m_dir + "/network_queue_bins.csv");
++        NS_ABORT_MSG_IF(!perDevice || !bins, "Cannot write queue statistics");
++        perDevice << "node,device,type,mean_packets,peak_packets,queue_drops\n";
++        perDevice << std::setprecision(12);
++        for (auto& d : m_devices)
++        {
++            d->Advance(m_endNs);
++            perDevice << d->node << ',' << d->device << ',' << d->type << ','
++                      << static_cast<double>(d->packetNs / m_endNs) << ','
++                      << d->peak << ',' << d->drops << '\n';
++            d->queue->TraceDisconnectWithoutContext("PacketsInQueue", ns3::MakeCallback(&Device::Change, d.get()));
++            d->queue->TraceDisconnectWithoutContext("Drop", ns3::MakeCallback(&Device::Drop, d.get()));
++        }
++        bins << "start_s,end_s,total_queued_mean_packets,max_single_queue_packets,queue_drops,tc_drops,total_buffer_drops\n";
++        bins << std::setprecision(12);
++        for (size_t i = 0; i < m_bins.size(); ++i)
++        {
++            const int64_t start = i * 1000000000LL;
++            const int64_t stop = std::min<int64_t>(m_endNs, start + 1000000000LL);
++            bins << start / 1e9 << ',' << stop / 1e9 << ','
++                 << static_cast<double>(m_bins[i].packetNs / (stop - start)) << ','
++                 << m_bins[i].peakSingleQueue << ',' << m_bins[i].drops << ',' << m_bins[i].tcDrops
++                 << ',' << m_bins[i].drops + m_bins[i].tcDrops << '\n';
++        }
++        for (auto& [tc, node] : m_tcLayers)
++            tc->TraceDisconnectWithoutContext("TcDrop", ns3::MakeBoundCallback(&QueueObserver::TcDrop, this, node));
++        m_dropFile.close();
++        m_tcDropFile.close();
++    }
++  private:
++    std::string m_dir; ///< Output log directory.
++    int64_t m_endNs; ///< Expected simulation stop time.
++    std::vector<QueueBin> m_bins; ///< Fixed one-second measurement intervals.
++    std::vector<std::unique_ptr<Device>> m_devices; ///< All observed device queues.
++    std::ofstream m_dropFile; ///< Detailed queue drop events.
++    std::ofstream m_tcDropFile; ///< Detailed pre-queue traffic-control drops.
++    std::vector<std::pair<ns3::Ptr<ns3::TrafficControlLayer>, uint32_t>> m_tcLayers; ///< Node-level trace owners.
++};
++} // namespace vegas_eval
++#endif
+diff --git a/src/internet/model/tcp-vegas.cc b/src/internet/model/tcp-vegas.cc
+index 22b669b..0dc67e0 100644
+--- a/src/internet/model/tcp-vegas.cc
++++ b/src/internet/model/tcp-vegas.cc
+@@ -17,6 +17,10 @@
+ #include "tcp-socket-state.h"
+ 
+ #include "ns3/log.h"
++#include "ns3/boolean.h"
++#include "ns3/simulator.h"
++
++#include <iostream>
+ 
+ namespace ns3
+ {
+@@ -31,6 +35,16 @@ TcpVegas::GetTypeId()
+                             .SetParent<TcpNewReno>()
+                             .AddConstructor<TcpVegas>()
+                             .SetGroupName("Internet")
++                            .AddAttribute("BaseRttWindow",
++                                          "RTT history duration; zero preserves original Vegas",
++                                          TimeValue(Seconds(0)),
++                                          MakeTimeAccessor(&TcpVegas::m_baseRttWindow),
++                                          MakeTimeChecker(Seconds(0)))
++                            .AddAttribute("TraceState",
++                                          "Write VEGAS_DECISION and VEGAS_STATE diagnostic lines",
++                                          BooleanValue(false),
++                                          MakeBooleanAccessor(&TcpVegas::m_traceState),
++                                          MakeBooleanChecker())
+                             .AddAttribute("Alpha",
+                                           "Lower bound of packets in network",
+                                           UintegerValue(2),
+@@ -65,6 +79,9 @@ TcpVegas::TcpVegas()
+ 
+ TcpVegas::TcpVegas(const TcpVegas& sock)
+     : TcpNewReno(sock),
++      m_baseRttWindow(sock.m_baseRttWindow),
++      m_traceState(sock.m_traceState),
++      m_recentRtts(sock.m_recentRtts),
+       m_alpha(sock.m_alpha),
+       m_beta(sock.m_beta),
+       m_gamma(sock.m_gamma),
+@@ -101,7 +118,27 @@ TcpVegas::PktsAcked(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked, const Time&
+     m_minRtt = std::min(m_minRtt, rtt);
+     NS_LOG_DEBUG("Updated m_minRtt = " << m_minRtt);
+ 
+-    m_baseRtt = std::min(m_baseRtt, rtt);
++    if (m_baseRttWindow.IsZero())
++    {
++        // Control arm: exactly the original lifetime-minimum update.
++        m_baseRtt = std::min(m_baseRtt, rtt);
++    }
++    else
++    {
++        const Time now = Simulator::Now();
++        const Time cutoff = now - m_baseRttWindow;
++        while (!m_recentRtts.empty() && m_recentRtts.front().first < cutoff)
++        {
++            m_recentRtts.pop_front();
++        }
++        // A newer sample no larger than an older one dominates that candidate.
++        while (!m_recentRtts.empty() && m_recentRtts.back().second >= rtt)
++        {
++            m_recentRtts.pop_back();
++        }
++        m_recentRtts.emplace_back(now, rtt);
++        m_baseRtt = m_recentRtts.front().second;
++    }
+     NS_LOG_DEBUG("Updated m_baseRtt = " << m_baseRtt);
+ 
+     // Update RTT counter
+@@ -132,6 +169,13 @@ void
+ TcpVegas::CongestionStateSet(Ptr<TcpSocketState> tcb, const TcpSocketState::TcpCongState_t newState)
+ {
+     NS_LOG_FUNCTION(this << tcb << newState);
++    if (m_traceState)
++    {
++        std::clog << "VEGAS_STATE," << Simulator::Now().GetNanoSeconds() << ','
++                  << Simulator::GetContext() << ',' << static_cast<const void*>(this) << ','
++                  << static_cast<unsigned>(newState) << ',' << tcb->GetCwndInSegments()
++                  << ',' << tcb->m_ssThresh.Get() / tcb->m_segmentSize << '\n';
++    }
+     if (newState == TcpSocketState::CA_OPEN)
+     {
+         EnableVegas(tcb);
+@@ -194,7 +238,10 @@ TcpVegas::IncreaseWindow(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
+              * desidered throughput is currentCwnd * baseRtt
+              * target cwnd is throughput / minRtt
+              */
+-            double tmp = m_baseRtt.GetSeconds() / m_minRtt.GetSeconds();
++            // At expiration, the current Vegas cycle can still contain an older
++            // smaller sample. Clamp for this cycle to avoid an unsigned underflow.
++            const Time effectiveBaseRtt = std::min(m_baseRtt, m_minRtt);
++            double tmp = effectiveBaseRtt.GetSeconds() / m_minRtt.GetSeconds();
+             targetCwnd = static_cast<uint32_t>(segCwnd * tmp);
+             NS_LOG_DEBUG("Calculated targetCwnd = " << targetCwnd);
+             NS_ASSERT(segCwnd >= targetCwnd); // implies baseRtt <= minRtt
+@@ -205,6 +252,18 @@ TcpVegas::IncreaseWindow(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
+              */
+             diff = segCwnd - targetCwnd;
+             NS_LOG_DEBUG("Calculated diff = " << diff);
++            if (m_traceState)
++            {
++                // All RTT/time columns are integer nanoseconds. cwnd is pre-decision.
++                std::clog << "VEGAS_DECISION," << Simulator::Now().GetNanoSeconds() << ','
++                          << Simulator::GetContext() << ',' << static_cast<const void*>(this)
++                          << ',' << m_baseRttWindow.GetNanoSeconds()
++                          << ',' << m_baseRtt.GetNanoSeconds()
++                          << ',' << effectiveBaseRtt.GetNanoSeconds()
++                          << ',' << m_minRtt.GetNanoSeconds() << ',' << segCwnd
++                          << ',' << diff << ','
++                          << tcb->m_ssThresh.Get() / tcb->m_segmentSize << '\n';
++            }
+ 
+             if (diff > m_gamma && (tcb->m_cWnd < tcb->m_ssThresh))
+             {
+diff --git a/src/internet/model/tcp-vegas.h b/src/internet/model/tcp-vegas.h
+index 1271ea7..8396f9d 100644
+--- a/src/internet/model/tcp-vegas.h
++++ b/src/internet/model/tcp-vegas.h
+@@ -17,6 +17,9 @@
+ 
+ #include "tcp-congestion-ops.h"
+ 
++#include <deque>
++#include <utility>
++
+ namespace ns3
+ {
+ 
+@@ -142,6 +145,9 @@ class TcpVegas : public TcpNewReno
+     void DisableVegas();
+ 
+   private:
++    Time m_baseRttWindow{Seconds(0)}; //!< Zero: original lifetime minimum
++    bool m_traceState{false}; //!< Diagnostic output, including in release builds
++    std::deque<std::pair<Time, Time>> m_recentRtts; //!< Monotonic RTT candidates
+     uint32_t m_alpha;             //!< Alpha threshold, lower bound of packets in network
+     uint32_t m_beta;              //!< Beta threshold, upper bound of packets in network
+     uint32_t m_gamma;             //!< Gamma threshold, limit on increase

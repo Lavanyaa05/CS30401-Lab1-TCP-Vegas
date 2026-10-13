@@ -1,0 +1,4 @@
+satellites,original_vegas_mbps,history_1s_mbps,history_5s_mbps,history_10s_mbps,adaptive_vegas_mbps,cubic_control_mbps,interval_s,source
+500,8.93,82.15,79.12,75.01,13.0,95.9,0–200,supplied_report_reference
+1584,41.51,72.17,68.37,64.6,64.7,95.86,0–200,supplied_report_reference
+2160,12.12,75.43,73.03,67.13,71.0,95.91,0–200,supplied_report_reference

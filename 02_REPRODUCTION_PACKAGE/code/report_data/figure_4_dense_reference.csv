@@ -1,0 +1,5 @@
+window_s,goodput_mbps,mean_total_queued_packets,p95_sampled_srtt_ms
+0,12.41,0.081,87.15
+1,82.17,76.29,111.19
+5,79.82,15.65,92.00
+10,73.54,4.82,88.55
