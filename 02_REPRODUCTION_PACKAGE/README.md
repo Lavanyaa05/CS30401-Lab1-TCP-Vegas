@@ -1,6 +1,6 @@
 # CS30401 Lab 1 — Original, Adaptive and Recurring-Refresh TCP Vegas
 
-This package runs the group's original Vegas/CUBIC controls, adaptive BaseRTT relearning, and recurring BaseRTT refresh in one command. `README.md` and `code/` contain the inputs for these experiments; neither `01_TESTED_RAW_RESULTS/` nor `07_RECURRING_BASERTT_REFRESH/` is required to execute them. Fresh measurements are generated, rather than substituted from archived results.
+This package runs the group's original Vegas/CUBIC controls, adaptive BaseRTT relearning, and recurring BaseRTT refresh in one command. `README.md` and `code/` contain the inputs for these experiments
 
 ## 1. Environment and prerequisites
 
@@ -12,8 +12,6 @@ Allow several GB for states, the extra simulator/build, and detailed per-ACK tra
 
 ### Docker setup (recommended; commands on the Linux VM/host)
 
-Clone the repository with `git clone https://github.com/Lavanyaa05/CS30401-Lab1-TCP-Vegas.git` if needed. Start in `02_REPRODUCTION_PACKAGE/`, or in the unpacked submission folder containing `README.md` and `code/`:
-
 ```bash
 docker pull ghcr.io/yeonjong21/cs30401-lab1:2026f-v1
 mkdir -p output
@@ -23,8 +21,6 @@ docker run -it --rm --name lab1-repro \
   -v "$PWD/output":/work/output \
   ghcr.io/yeonjong21/cs30401-lab1:2026f-v1
 ```
-
-Use a **new, unused volume name** for a full reproduction. A container restart does not clean an existing volume. Preserve any previous work; do not delete its volume just to restart. If your Linux host UID differs from 1000 and mounted files are unwritable, grant the container user write permission to `output/` on the host. On Windows use Docker Desktop with WSL2 and run these Bash commands in the WSL Linux filesystem, rather than under `/mnt/c/`.
 
 Inside the container:
 
