@@ -1,0 +1,7 @@
+/generated/
+/generated-*/
+/smoke/
+/.venv/
+**/.venv/
+**/__pycache__/
+*.pyc
