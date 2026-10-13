@@ -1,0 +1,33 @@
+{
+  "spec": {
+    "scenario": "sat500",
+    "satellites": 500,
+    "orbits": 25,
+    "satellites_per_orbit": 20,
+    "tcp": "TcpVegas",
+    "window_s": 10,
+    "queue_packets": 1000,
+    "flows": 1,
+    "duration_s": 200,
+    "rate_mbps": 100,
+    "src": 500,
+    "dst": 501,
+    "seed": 123456789,
+    "pacing": false,
+    "state_sha256": "0744c1f0f583e1f73eef281552b7543c7153139895944fbe484dfbeb29cee1d0",
+    "source_sha256": {
+      "src/internet/model/tcp-vegas.cc": "a830a32e152419d03f01011a0726c2e66278c5aed62045a8b53ffcfb226ce568",
+      "src/internet/model/tcp-vegas.h": "d342c5398361bc4e9f0f702333f8a55ee8304223dd882821f94c2d02a79d3d1a",
+      "scratch/main_satnet/main_satnet.cc": "947c3c4e86b8f71d318cfd93f35a54ebae5479f2f001ea1af7bdfd2d0c704183",
+      "scratch/main_satnet/vegas-experiment.h": "aaf34b1202a3acae150fdece702d99f18e2d6ee5cc1f85141170ed08948604db",
+      "scratch/main_satnet/vegas-queue-observer.h": "414142bd31bcd9a5d823e58687b21eac87226374ffebee104b0abec069d7a420",
+      "contrib/basic-sim/model/apps/tcp-flow-send-application.cc": "5c2dc25d0db8c5a4a8dbbf28341bb16c137c5c4e1e807c81215bc3967f603480",
+      "contrib/basic-sim/model/apps/vegas-flow-observer.h": "66452d180d2b001a002a9e92226bbdf15dac4cbd3e72a99ed25179e02b0ba8b3"
+    },
+    "runner_sha256": "7ad252f59c8188eb007104a625155af156a81127610cfc98821a6efcc67a94cd",
+    "analysis_core_sha256": "2b36f861eb5f1a6498cda4e31468267ccaaf340265e6bd0fe833d938d7491ff3",
+    "run": "sat500_vegas10_r100_q1000_f1"
+  },
+  "wall_seconds": 300.4545853390001,
+  "provenance": "Uploaded evaluation: vegas10"
+}

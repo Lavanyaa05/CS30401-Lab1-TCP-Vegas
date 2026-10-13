@@ -1,0 +1,42 @@
+{
+  "spec": {
+    "scenario": "dense",
+    "window_s": 0.0,
+    "queue_packets": 1000,
+    "flows": 1,
+    "duration_s": 200,
+    "rate_mbps": 100,
+    "seed": 123456789,
+    "state": "/home/zhao-yuen/cs30401/work/states/sat_2160/state",
+    "src": 2160,
+    "dst": 2161,
+    "source_sha256": {
+      "src/internet/model/tcp-vegas.cc": "a830a32e152419d03f01011a0726c2e66278c5aed62045a8b53ffcfb226ce568",
+      "src/internet/model/tcp-vegas.h": "d342c5398361bc4e9f0f702333f8a55ee8304223dd882821f94c2d02a79d3d1a",
+      "scratch/main_satnet/main_satnet.cc": "947c3c4e86b8f71d318cfd93f35a54ebae5479f2f001ea1af7bdfd2d0c704183",
+      "scratch/main_satnet/vegas-experiment.h": "aaf34b1202a3acae150fdece702d99f18e2d6ee5cc1f85141170ed08948604db",
+      "scratch/main_satnet/vegas-queue-observer.h": "414142bd31bcd9a5d823e58687b21eac87226374ffebee104b0abec069d7a420",
+      "contrib/basic-sim/model/apps/tcp-flow-send-application.cc": "5c2dc25d0db8c5a4a8dbbf28341bb16c137c5c4e1e807c81215bc3967f603480",
+      "contrib/basic-sim/model/apps/vegas-flow-observer.h": "66452d180d2b001a002a9e92226bbdf15dac4cbd3e72a99ed25179e02b0ba8b3"
+    },
+    "state_metadata_sha256": {
+      "isls.txt": "165821a83f2cd4a3652bda1ac57a000dc1f2f3821d2e800e07e99d16013d3dca",
+      "description.txt": "e9e2297b872bb727a52e10e288f4f2a3243228ac5e95a4b49ffa8b532bccfb6e",
+      "ground_stations.basic.txt": "2cf51f414e52cb1557a202f91f1bfbcc30b5238476fc26bd29086b5046b7612a",
+      "ground_stations.txt": "9a6f895ced480a880c7c5aa229be1cc6b23c2e85bca0b6ce312af823cdf57262",
+      "gsl_interfaces_info.txt": "175d9a446db312eff8d3e54e3f9643bfb1d2d14febae7060a0df4b0ea13eefa6",
+      "node_ids.txt": "e7e0e2786d465601969a99bccaca0c3addaf4edaa71eb2b327f0cb758e68e50e",
+      "tles.txt": "aae788915dd30e0fb957613c638f97a2d8987aee2823bcba6ec8243009f387d7"
+    },
+    "extra_trace": true,
+    "vegas_trace": true,
+    "pacing": false,
+    "satellites": 2160,
+    "tcp": "TcpVegas",
+    "orbits": 72,
+    "satellites_per_orbit": 30,
+    "run": "sat2160_vegas0_r100_q1000_f1"
+  },
+  "wall_seconds": 163.11810066499993,
+  "provenance": "Uploaded evaluation: dense_w0_q1000_f1"
+}

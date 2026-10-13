@@ -1,0 +1,22 @@
+case,interval,start_s,end_s,goodput_mbps
+vegas0,before,153.8,163.8,10.602816
+vegas0,first 10 s after,163.8,173.8,3.928032
+vegas0,later on longer route,173.8,192.5,0.9800213903743322
+vegas1,before,153.8,163.8,96.229056
+vegas1,first 10 s after,163.8,173.8,93.15552
+vegas1,later on longer route,173.8,192.5,96.2345582887701
+vegas5,before,153.8,163.8,96.229056
+vegas5,first 10 s after,163.8,173.8,73.480032
+vegas5,later on longer route,173.8,192.5,83.26993796791449
+vegas10,before,153.8,163.8,96.229056
+vegas10,first 10 s after,163.8,173.8,68.947008
+vegas10,later on longer route,173.8,192.5,72.76717860962572
+cubic,before,153.8,163.8,96.23016
+cubic,first 10 s after,163.8,173.8,95.97072
+cubic,later on longer route,173.8,192.5,96.2345582887701
+newreno,before,153.8,163.8,96.229056
+newreno,first 10 s after,163.8,173.8,92.733792
+newreno,later on longer route,173.8,192.5,96.02438502673803
+bbr,before,153.8,163.8,95.560032
+bbr,first 10 s after,163.8,173.8,92.32752
+bbr,later on longer route,173.8,192.5,95.61820748663108
