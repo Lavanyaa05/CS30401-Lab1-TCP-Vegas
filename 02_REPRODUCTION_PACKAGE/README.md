@@ -44,85 +44,7 @@ docker image inspect ghcr.io/yeonjong21/cs30401-lab1:2026f-v1 \
 
 The tag identifies the intended platform; the historical measurements do not establish an immutable original image digest.
 
-### Manual Linux VM setup (Ubuntu 24.04/22.04)
-
-These follow section 2.2 of the Lab Environment Guide. On Ubuntu 22.04, install newer CMake as shown; ns-3.48 needs CMake 3.25 or newer.
-
-```bash
-sudo apt update
-sudo apt install -y g++ python3 python3-venv git curl bzip2 cmake ninja-build
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# Open a new terminal so uv is on PATH.
-# Ubuntu 22.04 only:
-uv tool install cmake
-
-mkdir -p "$HOME/cs30401-repro"
-cd "$HOME/cs30401-repro"
-git clone https://github.com/Yeonjong21/cs30401-lab1-env.git lab
-git clone https://github.com/snkas/hypatia.git lab/hypatia
-git -C lab/hypatia checkout 0ac531c313eba2335f6344b46347140c3a0d4230
-curl -L -o ns-3.48.tar.gz \
-  https://codeload.github.com/nsnam/ns-3-dev-git/tar.gz/refs/tags/ns-3.48
-tar xzf ns-3.48.tar.gz
-mv ns-3-dev-git-ns-3.48 ns-3.48
-bash lab/scripts/setup_ns3.sh "$HOME/cs30401-repro/ns-3.48"
-(cd lab && uv sync --frozen)
-export NS3_DIR="$HOME/cs30401-repro/ns-3.48"
-export LAB="$HOME/cs30401-repro/lab"
-export STATE_EXAMPLE="$LAB/data/seoul_london/state"
-export PATH="$LAB/scripts:$PATH"
-source "$LAB/.venv/bin/activate"
-check_env.sh
-```
-
-Then change into this reproduction package and run:
-
-```bash
-export REPRO_WORK="$HOME/cs30401-repro-output"
-bash code/run_all.sh --threads 4
-```
-
-The runner installs its own locked Python environment at `$REPRO_WORK/repro_venv`. A manual installation must retain its actual environment repository commit; a changing upstream `main` is not a pinned historical version. Record it, along with OS/compiler/version information:
-
-```bash
-cat /etc/os-release
-g++ --version
-cat "$NS3_DIR/VERSION"
-git -C "$LAB" rev-parse HEAD
-```
-
-The refresh runner also writes `refresh_generated/environment_<timestamp>.json` with platform, compiler, Python, ns-3 version, source hashes and the course repository commit when `$LAB` is available. If the course baseline has changed, source-hash checks stop execution; use the course version matching the reference image rather than forcing the patch.
-
-## 2. Experiments, implementation and parameter basis
-
-| Stage | Cases | Duration and purpose |
-|---|---|---|
-| Original controls | Original `TcpVegas` and `TcpCubic`, each at 1,584 and 2,160 satellites | Four 200 s runs: reproduce Vegas underutilization and check available path capacity |
-| Adaptive | `TcpVegas`, 1,584 and 2,160 satellites | Two 200 s runs: persistent-shift BaseRTT relearning |
-| Adaptive safety | Five `TcpVegas` flows, 1,584 satellites | 60 s: flow 0 starts at 0 s; four competitors start at 35 s |
-| Recurring refresh | 500, 1,584 and 2,160 satellites × histories 0, 1, 5, 10 s | Twelve 200 s runs: original control and throughput/queue/delay trade-offs |
-
-The default sweep therefore performs **19 simulations**, with 3,660 simulated seconds in total. The refresh study includes its own instrumented original controls, separate from the unmodified controls above.
-
-| Parameter | Value and basis |
-|---|---|
-| Layouts | 1,584 = 72 × 22 course default; 2,160 = 72 × 30 controlled density perturbation; 500 = 25 × 20 sparse refresh extension. The latter two are experimental constructions, not deployed shells. |
-| Orbits/links | Course 550 km circular shell, 53° inclination, 25° minimum elevation; +Grid ISLs, two same-plane and two adjacent-plane neighbors. |
-| Routing | Shortest distance over ISLs only; 100 ms precomputed forwarding updates. No terrestrial path segments. |
-| Ground stations | Seoul `(37.56826,126.97783)` → London `(51.50853,-0.12574)`, retained course endpoints. IDs are `N` and `N+1` for `N` satellites. |
-| Link capacity | Every ISL and GSL = 100 Mbit/s; fixed to compare controller behavior, with CUBIC as capacity control. |
-| Queues | 1,000-packet DropTail device queues on both link types; deliberate large-buffer condition. At 100 Mbps and 90 ms RTT, BDP ≈ 1.125 MB ≈ 815 MSS-sized segments. This is not a deployed-equipment claim. |
-| Traffic | Each flow requests 100 GB and stays backlogged through the run. `NO_ONGOING` in the flow summary is expected. |
-| TCP | MSS 1,380 bytes, initial cwnd 10 segments, 32 MiB send/receive buffers, SACK/timestamps/window scaling; Vegas alpha=2, beta=4, gamma=1; pacing disabled. |
-| Duration/seed | 200 s captures route events and later behavior; 60 s safety run probes added contention. Seed 123456789; deterministic configured inputs, not statistical repetitions. |
-
-The model changes propagation continuously and switches forwarding instantly. It does not add weather, random bit errors, capacity variation or a link-layer handover outage. Queue overflow or missing satellite visibility can cause loss. Changing constellation size also changes geometry and route history, so satellite count alone is not isolated.
-
-**Adaptive rule:** at an eligible Vegas calculation, `minRTT > BaseRTT + 3 ms` must hold for five consecutive qualifying calculations while more than 10 s have passed since the last reset. Then BaseRTT becomes the current cycle minimum. These are strict comparisons. The initial reset timestamp is far in the past; the first reset need not wait 10 s after startup. The engineering thresholds are prototype choices, not optimized constants. No route/orbit notification or receiver modification is used.
-
-**Recurring refresh:** history 0 retains original lifetime-minimum Vegas. Histories 1, 5 and 10 s expire old RTT observations and select the minimum still in the window, updated on valid RTT samples. This is a sliding minimum, not an unconditional timer reset. The decision baseline is clamped against the current cycle minimum to avoid unsigned underflow. A shorter history can adapt sooner but can learn a standing queue. Refresh adds passive flow/queue observers and retains Vegas alpha/beta/gamma.
-
-### Exact constellation-generation commands
+## 2. Exact constellation-generation commands
 
 The unmodified/adaptive default layout uses `$STATE_EXAMPLE`. The runner creates its 2,160 state using `code/generate_state.sh`, equivalent to:
 
@@ -263,35 +185,6 @@ The previous Figure 3/Table 3 filenames now have implemented generators (command
 Use matching intervals: adaptive/original `tcp_flows.txt` rates are whole-run 0–200 s averages; refresh `summary.csv` defaults to **20–200 s** and additionally reports whole-run and 60–200 s goodput. Use `goodput_windows.csv` **0–200 s** when comparing with adaptive. Five-flow safety averages use 0–60 s for flow 0 and 35–60 s for each later flow; their sum is not a shared-interval aggregate throughput or a fairness measurement.
 
 Refresh goodput counts newly acknowledged application bytes in decimal Mbps. Queue occupancy is a time-weighted sum over monitored device queues; SRTT includes propagation. Retransmissions are not equivalent to buffer losses. Single-flow Jain fairness of 1 establishes no multi-flow fairness result. Do not replace failed fresh measurements with archived target numbers.
-
-## 6. Supplied Table III and Figure 4 reference results
-
-These are the values in the screenshots supplied on 13 October 2026. They are **reported reference values, not newly simulated measurements**. `*` marks a group-reported development average. `†` marks a 500-satellite value without a corresponding run in the current reproduction package.
-
-**Table III. Average goodput over 0–200 s (Mbps).**
-
-| Constellation | Original Vegas | 1 s history | 5 s history | 10 s history | Adaptive Vegas | CUBIC control |
-|---:|---:|---:|---:|---:|---:|---:|
-| 500 | 8.93 | 82.15 | 79.12 | 75.01 | 13.0*† | 95.9† |
-| 1,584 | 41.51 | 72.17 | 68.37 | 64.60 | 64.7* | 95.86 |
-| 2,160 | 12.12 | 75.43 | 73.03 | 67.13 | 71.0* | 95.91 |
-
-The table's adaptive 500 value (13.0 Mbps) contradicts the accompanying text saying adaptive was not tested at 500 satellites. The existing runner also does not run a 500-satellite adaptive or CUBIC case. Verify those two supplied entries against raw evidence, or mark them unavailable in the final report. Reference rendering preserves them with visible flags; fresh rendering never inserts them. The 1,584/2,160 reported adaptive improvement is approximately 55.9%/485.8% using the unrounded baseline totals; the rounded table alone gives slightly different percentages.
-
-![Table III comparison: supplied whole-run reference values](report_reference/figures/comparison_goodput.png)
-
-**Figure 4. Dense-case trade-off, 2,160 satellites, 20–200 s.**
-
-| History | Goodput (Mbps) | Mean total queue (packets) | p95 SRTT (ms) |
-|---|---:|---:|---:|
-| Original | 12.41 | 0.081 | 87.15 |
-| 1 s | 82.17 | 76.29 | 111.19 |
-| 5 s | 79.82 | 15.65 | 92.00 |
-| 10 s | 73.54 | 4.82 | 88.55 |
-
-![Figure 4: dense-case queue and RTT trade-off](report_reference/figures/refresh_queue_delay_2160.png)
-
-Every tested recent-history setting improves whole-run goodput over original Vegas in these three layouts. Improvement is not monotonic in satellite count because route history/geometry differ. In the dense case, 5 s reduces mean total queue by approximately 79.5% versus 1 s and p95 SRTT by 19.19 ms, while reducing 20–200 s goodput by 2.35 Mbps. These observations demonstrate the rate/queue/delay trade-off; they do not establish multi-flow fairness or that one controller is universally best.
 
 ### Redraw the supplied table and graphs without a simulator
 
