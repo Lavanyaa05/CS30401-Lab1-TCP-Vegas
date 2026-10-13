@@ -11,14 +11,18 @@ RUNS=/work/runs_repro
 ANALYSIS=/work/analysis_generated
 FIGURES=/work/figures_generated
 STATE2160=/work/state_2160
+STATE500=/work/state_500
 
 mkdir -p "$RUNS" "$ANALYSIS" "$FIGURES"
 
 echo "[1/6] Generate the 2160-satellite state"
-"$ROOT/generate_state.sh" "$STATE2160"
+"$ROOT/generate_state.sh" "$STATE2160" 72 30
+
+echo "[1.5/6] Generate the 500-satellite state"
+"$ROOT/generate_state.sh" "$STATE500" 25 20
 
 echo "[2/6] Run unmodified standard Vegas and CUBIC baselines"
-"$ROOT/experiments/standard_baselines.sh" "$STATE2160/state" "$RUNS"
+"$ROOT/experiments/standard_baselines.sh"
 
 echo "[3/6] Apply Adaptive Vegas patch"
 cd "$NS3_DIR"
@@ -29,13 +33,18 @@ fi
 git apply  --ignore-space-change --ignore-whitespace "$ROOT/adaptive-vegas.patch"
 
 echo "[4/6] Run adaptive and congestion-safety experiments"
-"$ROOT/experiments/adaptive_runs.sh" "$STATE2160/state" "$RUNS" "$ANALYSIS"
+"$ROOT/experiments/adaptive_runs.sh" "$STATE500/state" "$STATE2160/state" "$RUNS" "$ANALYSIS"
 
-echo "[5/6] Extract quantitative summary"
-python3 "$ROOT/analysis/extract_summary.py" "$RUNS" "$ANALYSIS" "$ANALYSIS/summary.csv"
+echo "[5/6] Run dense five-flow and UDP cross-traffic experiments"
+"$ROOT/experiments/dense_cross_traffic.sh" "$STATE2160/state" "$RUNS" "$ANALYSIS"
 
-echo "[6/6] Generate figures"
+echo "[6.1/6] Extract quantitative summary"
+python3 "$ROOT/code/analysis/extract_summary.py" "$RUNS" "$ANALYSIS"
+
+echo "[6.2/6] Generate figures"
 python3 "$ROOT/plots/make_figures.py" "$ANALYSIS/summary.csv" "$FIGURES"
+python3 "$ROOT/plots/make_figures2.py" "$ANALYSIS/summary.csv" "$FIGURES"
+python3 "$ROOT/plots/make_figures3.py" "$ANALYSIS/summary.csv" "$FIGURES"
 
 echo
 cat "$ANALYSIS/summary.csv"
