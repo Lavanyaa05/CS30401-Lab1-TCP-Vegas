@@ -41,30 +41,9 @@ Output locations:
 
 ```text
 /work/runs_repro/
-/work/analysis_generated/summary.csv
+/work/analysis_generated/
 /work/figures_generated/
 ```
 
-## Patch details
-
-Apply manually, if desired:
-
-```bash
-cd "$NS3_DIR"
-git apply --ignore-space-change --ignore-whitespace --check /work/code/adaptive-vegas.patch
-git apply --ignore-space-change --ignore-whitespace /work/code/adaptive-vegas.patch
-./ns3 build
-```
-
-The patch modifies only:
-
-```text
-src/internet/model/tcp-vegas.cc
-src/internet/model/tcp-vegas.h
-```
 ## Figure/table mapping
 
-- Main standard-vs-adaptive throughput comparison: `/work/figures_generated/standard_vs_adaptive.png`
-- CUBIC topology-capacity control: `/work/figures_generated/cubic_controls.png`
-- Numeric values used by generated figures: `/work/analysis_generated/summary.csv`
-- Internal Vegas mechanism traces from development are included under `results/reference/`
