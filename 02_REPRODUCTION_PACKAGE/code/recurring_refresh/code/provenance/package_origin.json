@@ -1,0 +1,19 @@
+{
+  "prepared_date": "2026-10-12",
+  "target_repository": "https://github.com/Lavanyaa05/CS30401-Lab1-TCP-Vegas",
+  "target_commit": "2208e6640f0623e80c381d5bb7816e657130a25b",
+  "integration": "Adds only 07_RECURRING_BASERTT_REFRESH; no changes to existing tracked files.",
+  "source_archives_sha256": {
+    "Vegas_Investigation.zip": "e68cdc155e58067032511671dac395e4f6efa2e71166d10c5dc5c7b1173e5796",
+    "Vegas_Evaluation(1).zip": "e90f2251987b84d64888109eafd71eb41aa8953ae4c8c41a6747edff923ef4ca",
+    "Vegas_500_AllInOne(1).zip": "9bcad81ce8743a972568aa664c09834e870c45ef144ac079e80107766c945276",
+    "vegas-500-results_results.zip": "efe61fea2e6a7b0ae3d48b18278e15fb8b23916869a2a2bb808c8e18f34f06f0",
+    "vegas-evaluation_results.zip": "e8fbfc73015375511d35407fbd68c45c09c7ff201cb48444b7fb4c8728cd2794"
+  },
+  "consolidation_source": "Prior Team 8 unified experiment runner and verified compact results, narrowed to 12 recurring-refresh cases.",
+  "implementation": "Exact archived ns-3 sliding-window and observer patches, consolidated without controller behavior changes.",
+  "satgenpy_commit": "0ac531c313eba2335f6344b46347140c3a0d4230",
+  "course_source_commit_retrieved": "f77e9a6a850805741d7290913c88ffe43dcae4ca",
+  "historical_environment_commit": "Not established by the original measurement receipts; retrieved commit is not a claim about original execution.",
+  "data_scope": "Completed prior runs, compact derived samples and queue/decision/retransmission evidence; no new simulations in this packaging session."
+}
