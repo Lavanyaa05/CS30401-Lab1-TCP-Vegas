@@ -1,43 +1,58 @@
-#!/usr/bin/env python3
-from pathlib import Path
-import csv, sys
+import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-summary = Path(sys.argv[1] if len(sys.argv) > 1 else "/work/analysis_generated/summary.csv")
-outdir = Path(sys.argv[2] if len(sys.argv) > 2 else "/work/figures_generated")
-outdir.mkdir(parents=True, exist_ok=True)
+ROOT = Path("/work/analysis_generated")
+OUT = Path("/work/figures_generated")
+OUT.mkdir(parents=True, exist_ok=True)
 
-rows = {}
-with summary.open() as f:
-    for r in csv.DictReader(f):
-        rows[r["case"]] = None if not r["avg_rate_Mbit_s"] else float(r["avg_rate_Mbit_s"])
+df = pd.read_csv(ROOT / "timeseries.csv")
 
-# Main standard-vs-adaptive comparison.
-labels = ["1584", "2160"]
-standard = [rows.get("Vegas standard 1584"), rows.get("Vegas standard 2160")]
-adaptive = [rows.get("Vegas adaptive 1584"), rows.get("Vegas adaptive 2160")]
+for run in sorted(df["run"].unique()):
+    if not run.startswith("vegas_"):
+        continue
 
-x = list(range(len(labels)))
-width = 0.36
-fig, ax = plt.subplots(figsize=(6.4, 4.2))
-ax.bar([i-width/2 for i in x], standard, width, label="Standard Vegas")
-ax.bar([i+width/2 for i in x], adaptive, width, label="Adaptive Vegas")
-ax.set_xticks(x, labels)
-ax.set_xlabel("Satellite count")
-ax.set_ylabel("Average throughput (Mbit/s)")
-ax.legend()
-fig.tight_layout()
-fig.savefig(outdir / "standard_vs_adaptive.png", dpi=220)
-plt.close(fig)
+    data = df[df["run"] == run]
+    fig, ax = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
 
-# CUBIC controls.
-cubic = [rows.get("CUBIC control 1584"), rows.get("CUBIC control 2160")]
-fig, ax = plt.subplots(figsize=(6.4, 4.2))
-ax.bar(labels, cubic)
-ax.set_xlabel("Satellite count")
-ax.set_ylabel("Average throughput (Mbit/s)")
-fig.tight_layout()
-fig.savefig(outdir / "cubic_controls.png", dpi=220)
-plt.close(fig)
+    # Goodput: cumulative delivered bytes -> 1-second rate
+    delivered = data[data["metric"] == "delivered_bytes"]
 
-print(f"Wrote figures to {outdir}")
+    if not delivered.empty:
+        delivered = delivered.sort_values("time_s")
+        delivered["second"] = delivered["time_s"].astype(int)
+
+        for flow, f in delivered.groupby("flow_id"):
+            per_second = f.groupby("second")["value"].last()
+            goodput = per_second.diff() * 8 / 1e6
+            ax[0].plot(goodput.index, goodput.values,
+                       label=f"Flow {flow}", linewidth=1)
+
+        ax[0].legend()
+    ax[0].set_ylabel("Goodput (Mbps)")
+    ax[0].set_title(run)
+
+    # CWND
+    cwnd = data[data["metric"] == "cwnd_bytes"]
+    for flow, f in cwnd.groupby("flow_id"):
+        ax[1].plot(
+            f["time_s"],
+            f["value"] / 1380,
+            label=f"Flow {flow}",
+            linewidth=1
+        )
+
+    if cwnd["flow_id"].nunique() > 1:
+        ax[1].legend()
+
+    ax[1].set_ylabel("CWND (segments)")
+    ax[1].set_xlabel("Time (s)")
+
+    for a in ax:
+        a.grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    fig.savefig(OUT / f"{run}_goodput_cwnd.png", dpi=150)
+    plt.close(fig)
+
+    print(f"Saved {OUT / f'{run}_goodput_cwnd.png'}")

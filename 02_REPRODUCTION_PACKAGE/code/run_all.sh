@@ -6,7 +6,7 @@ MODE=all
 if [[ ${1:-} == --help ]]; then
   cat <<'HELP'
 Usage: bash code/run_all.sh [--refresh-only] [refresh runner options]
-Default: original Vegas/CUBIC, adaptive Vegas/safety, then all 12 refresh cases.
+Default: original Vegas/CUBIC (500/1584/2160), adaptive/safety, cross-traffic, 12 refresh cases.
 --refresh-only resumes just the refresh stage using REFRESH_NS3_DIR.
 Options such as --threads 4 and --retry-incomplete are forwarded to refresh.
 Required: NS3_DIR, LAB, STATE_EXAMPLE; see README.md for clean-tree setup.
@@ -30,6 +30,7 @@ RUNS="$WORK/runs_repro"
 ANALYSIS="$WORK/analysis_generated"
 FIGURES="$WORK/figures_generated"
 STATE2160="$WORK/state_2160"
+STATE500="$WORK/state_500"
 REFRESH_OUTPUT="$WORK/refresh_generated"
 REFRESH_NS3_DIR=${REFRESH_NS3_DIR:-$WORK/ns3_refresh}
 export UV_PROJECT_ENVIRONMENT=${UV_PROJECT_ENVIRONMENT:-$WORK/repro_venv}
@@ -57,7 +58,7 @@ for rel, expected in json.loads(Path(sys.argv[2]).read_text())['baseline_file_sh
     if not p.is_file() or hashlib.sha256(p.read_bytes()).hexdigest() != expected:
         raise SystemExit(f'Baseline source differs: {rel}. Use a fresh course ns-3 tree.')
 PY
-  for output in "$RUNS" "$ANALYSIS" "$FIGURES" "$STATE2160" "$REFRESH_OUTPUT"; do
+  for output in "$RUNS" "$ANALYSIS" "$FIGURES" "$STATE2160" "$STATE500" "$REFRESH_OUTPUT"; do
     [[ ! -e $output ]] || { echo "Existing output: $output. Use a new REPRO_WORK; see README.md." >&2; exit 1; }
   done
   if [[ ! -e $REFRESH_NS3_DIR ]]; then
@@ -80,18 +81,23 @@ unset VEGAS_WINDOW_S VEGAS_TRACE VEGAS_EXTRA_TRACE FLOWS
 export PACING=false
 if [[ $MODE == all ]]; then
   mkdir -p "$RUNS" "$ANALYSIS" "$FIGURES"
-  echo '[3/9] Generate the 2160-satellite state'
-  bash "$ROOT/generate_state.sh" "$STATE2160"
+  echo '[3/9] Generate the 500- and 2160-satellite states'
+  bash "$ROOT/generate_state.sh" "$STATE2160" 72 30
+  bash "$ROOT/generate_state.sh" "$STATE500" 25 20
   echo '[4/9] Run original Vegas and CUBIC controls on the unmodified tree'
-  bash "$ROOT/experiments/standard_baselines.sh" "$STATE2160/state" "$RUNS"
+  bash "$ROOT/experiments/standard_baselines.sh" "$STATE500/state" "$STATE2160/state" "$RUNS" "$ANALYSIS"
   echo '[5/9] Apply and build adaptive Vegas'
   git -C "$NS3_DIR" apply --ignore-space-change --ignore-whitespace "$ROOT/adaptive-vegas.patch"
   (cd "$NS3_DIR" && ./ns3 build main_satnet)
-  echo '[6/9] Run adaptive Vegas and congestion safety'
-  bash "$ROOT/experiments/adaptive_runs.sh" "$STATE2160/state" "$RUNS" "$ANALYSIS"
+  echo '[6/9] Run adaptive Vegas, safety, dense five-flow and UDP cases'
+  bash "$ROOT/experiments/adaptive_runs.sh" "$STATE500/state" "$STATE2160/state" "$RUNS" "$ANALYSIS"
+  bash "$ROOT/experiments/dense_cross_traffic.sh" "$STATE2160/state" "$RUNS" "$ANALYSIS"
   echo '[7/9] Extract baseline/adaptive results and figures'
   python3 "$ROOT/analysis/extract_summary.py" "$RUNS" "$ANALYSIS" "$ANALYSIS/summary.csv"
-  python3 "$ROOT/plots/make_figures.py" "$ANALYSIS/summary.csv" "$FIGURES"
+  python3 "$ROOT/analysis/extract_detailed_summary.py" "$RUNS" "$ANALYSIS"
+  python3 "$ROOT/plots/make_figures.py" "$ANALYSIS" "$FIGURES"
+  python3 "$ROOT/plots/make_figures2.py" "$ANALYSIS" "$FIGURES"
+  python3 "$ROOT/plots/make_figures3.py" "$ANALYSIS" "$FIGURES"
 fi
 echo '[8/9] Run original and 1/5/10 s histories in the separate refresh tree'
 uv run --frozen --project "$ROOT" python "$REFRESH/experiments.py" run \
@@ -105,5 +111,7 @@ python3 "$ROOT/plots/make_report_figures.py" \
   --refresh-summary "$REFRESH_OUTPUT/analysis/summary.csv" \
   "${REPORT_ARGS[@]}" --outdir "$FIGURES" --analysisdir "$ANALYSIS"
 echo "Baseline/adaptive summary: $ANALYSIS/summary.csv"
+echo "Detailed metrics: $ANALYSIS/run_summary.csv and $ANALYSIS/flow_metrics.csv"
+echo "Report comparison: $ANALYSIS/table_iii.csv"
 echo "Baseline/adaptive figures: $FIGURES"
 echo "Refresh summaries and figures: $REFRESH_OUTPUT/analysis"
