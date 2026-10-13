@@ -1,6 +1,6 @@
 # CS30401 Group Testing Pack — START HERE
 
-This package collects the **actual files/results we used during development**, the **final Adaptive Vegas implementation**, the **current reproduction scripts**, the **reference graphs**, and the **current report** so every group member can inspect and retest the project from one folder.
+This package collects the **actual files/results we used during development**, the **final Adaptive Vegas implementation**, the **current reproduction scripts**, the **reference graphs**, the **current report**, and the **recurring BaseRTT refresh experiments** so every group member can inspect and retest the project from one folder.
 
 ## What our project tests
 
@@ -16,6 +16,7 @@ Fix: sender-side Adaptive BaseRTT relearning. If the per-cycle minimum RTT remai
 - `04_REFERENCE_GRAPHS/` — coloured graphs currently used as visual references.
 - `05_CURRENT_REPORT/` — latest Word report with repaired graph rendering.
 - `06_ASSIGNMENT_REFERENCE/` — lab handout and environment guide.
+- `07_RECURRING_BASERTT_REFRESH/` — separate sliding-window BaseRTT implementation, 12-case reproduction workflow, compact reference evidence, analysis scripts, and regression checks. See its [README](../07_RECURRING_BASERTT_REFRESH/README.md) for full instructions.
 
 ## Fastest way for a teammate to retest the main experiments
 
@@ -79,6 +80,44 @@ Congestion-safety development run:
 - flows 1–4 started at 35 s
 - no `ADAPTIVE_RESET` occurred after cross-traffic began
 - measured run averages: approximately 20.6, 10.0, 10.2, 12.9, 13.0 Mbit/s
+
+## Recurring BaseRTT refresh experiments
+
+`07_RECURRING_BASERTT_REFRESH/` complements the adaptive relearning method with a sliding RTT history. Old RTT samples expire, and BaseRTT uses the lowest remaining sample. Refresh happens on valid RTT observations, rather than blindly resetting BaseRTT on a timer. A history of `0` preserves original Vegas's lifetime minimum.
+
+The separate workflow runs **12 cases**: 500, 1,584, and 2,160 satellites, each with histories of **0, 1, 5, and 10 seconds**. Each case uses a single Seoul–London flow for 200 simulated seconds, 100 Mbps links, and 1,000-packet DropTail buffers.
+
+Use a **dedicated course-enabled ns-3.48 installation or Docker volume**: the adaptive and recurring-refresh patches both modify Vegas sources and must not be applied on top of each other. Follow the folder's [environment instructions](../07_RECURRING_BASERTT_REFRESH/README.md#2-recommended-environment-a-dedicated-course-container), then run inside that environment:
+
+```bash
+cd /work/<this-folder>/07_RECURRING_BASERTT_REFRESH
+export NS3_DIR=/home/ubuntu/ns-3.48
+bash run_all.sh --threads 4
+```
+
+This launcher installs the locked Python dependencies, checks/applies the patch, generates and validates constellation states, builds the simulator, runs the matrix, and produces CSVs and figures under `generated/analysis/`. It is separate from `02_REPRODUCTION_PACKAGE/code/run_all.sh`; the main launcher does not run these cases.
+
+To regenerate archived metrics without running ns-3 or installing scientific dependencies:
+
+```bash
+cd /work/<this-folder>/07_RECURRING_BASERTT_REFRESH
+python3 code/reproduce_reference.py --no-plots
+```
+
+This verifies compact evidence checksums, recomputes metrics into `generated-reference/`, and checks the archived targets. Plot-generation instructions are in the folder's README.
+
+Archived reference **average goodput during 20–200 s**:
+
+| RTT history | 500 satellites | 1,584 satellites | 2,160 satellites |
+|---|---:|---:|---:|
+| Original (`0`) | 9.16 Mbit/s | 45.41 Mbit/s | 12.41 Mbit/s |
+| 1 s | 89.28 Mbit/s | 78.75 Mbit/s | 82.17 Mbit/s |
+| 5 s | 86.16 Mbit/s | 74.65 Mbit/s | 79.82 Mbit/s |
+| 10 s | 82.14 Mbit/s | 70.84 Mbit/s | 73.54 Mbit/s |
+
+Shorter histories improve goodput in these archived runs but can learn a standing queue. These single-flow experiments do not establish multi-flow fairness. When comparing against the adaptive results in the current report, use the refresh analysis's matching **0–200 s** goodput column, rather than the 20–200 s values above.
+
+**Validation status:** archived analysis reproduces 120 checked values across 12 completed cases, and patch checks reproduce all seven modified-source hashes. Regression tests cover orchestration and analysis, but the consolidated launcher has **not completed a fresh end-to-end ns-3 rerun in the preparation environment**. See [VALIDATION.md](../07_RECURRING_BASERTT_REFRESH/VALIDATION.md). The group still needs to verify that fresh rerun before claiming the consolidated workflow is fully reproduced.
 
 ## Before final submission
 
