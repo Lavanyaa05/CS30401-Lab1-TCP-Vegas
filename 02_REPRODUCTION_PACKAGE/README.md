@@ -46,4 +46,9 @@ Output locations:
 ```
 
 ## Figure/table mapping
+Figure 1. => "work\figures_generated\vegas_2160_standard_goodput_cwnd.png"
+Figure 2. => "work\figures_generated\vegas_2160_five_flow_adaptive_base_min_rtt.png"
+Figure 3. => "work\figures_generated\comparison_goodput.png"
 
+Table 3. => "work\analysis_generated\run_summary.csv"
+Table 4. => "work\cs304\analysis_generated\flow_metrics.csv"
